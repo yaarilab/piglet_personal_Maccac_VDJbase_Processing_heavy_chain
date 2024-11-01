@@ -129,9 +129,6 @@ params.genotype_piglet_v_call.call = "v_call"
 
 // Process Parameters for genotype_piglet_d:
 params.genotype_piglet_d.call = "d_call"
-params.genotype_piglet_d.seq = "sequence_alignment"
-params.genotype_piglet_d.find_unmutated = "false"
-params.genotype_piglet_d.single_assignments = "true"
 
 
 // Process Parameters for genotype_piglet_j_call:
