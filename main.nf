@@ -136,6 +136,26 @@ params.genotype_piglet_j_call.call = "j_call"
 
 
 
+params.make_igblast_ndm_third_alignment.ndm_chain = params.ndm_chain
+
+// Process Parameters for third_Alignment_IgBlastn:
+params.third_Alignment_IgBlastn.num_threads = "10"
+params.third_Alignment_IgBlastn.ig_seqtype = "Ig"
+params.third_Alignment_IgBlastn.outfmt = "MakeDb"
+params.third_Alignment_IgBlastn.num_alignments_V = "10"
+params.third_Alignment_IgBlastn.domain_system = "imgt"
+
+params.third_Alignment_MakeDb.failed = "true"
+params.third_Alignment_MakeDb.format = "airr"
+params.third_Alignment_MakeDb.regions = "default"
+params.third_Alignment_MakeDb.extended = "true"
+params.third_Alignment_MakeDb.asisid = "false"
+params.third_Alignment_MakeDb.asiscalls = "false"
+params.third_Alignment_MakeDb.inferjunction = "false"
+params.third_Alignment_MakeDb.partial = "false"
+params.third_Alignment_MakeDb.name_alignment = "_third_Alignment"
+
+
 if (!params.v_germline_file){params.v_germline_file = ""} 
 if (!params.d_germline){params.d_germline = ""} 
 if (!params.j_germline){params.j_germline = ""} 
@@ -148,10 +168,10 @@ ch_empty_file_1 = file("$baseDir/.emptyfiles/NO_FILE_1", hidden:true)
 ch_empty_file_2 = file("$baseDir/.emptyfiles/NO_FILE_2", hidden:true)
 ch_empty_file_3 = file("$baseDir/.emptyfiles/NO_FILE_3", hidden:true)
 
-Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_92;g_2_germlineFastaFile_g_114}
-Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_3_germlineFastaFile_g_97;g_3_germlineFastaFile_g_124}
-Channel.fromPath(params.j_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_4_germlineFastaFile_g_90;g_4_germlineFastaFile_g_115}
-Channel.fromPath(params.airr_seq, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_94_fastaFile_g_125;g_94_fastaFile_g0_9;g_94_fastaFile_g0_12}
+Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_114;g_2_germlineFastaFile_g_92}
+Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_3_germlineFastaFile_g_124;g_3_germlineFastaFile_g_97}
+Channel.fromPath(params.j_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_4_germlineFastaFile_g_115;g_4_germlineFastaFile_g_90}
+Channel.fromPath(params.airr_seq, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_94_fastaFile_g_125;g_94_fastaFile_g_136;g_94_fastaFile_g0_9;g_94_fastaFile_g0_12}
 Channel.fromPath(params.v_optimized_thresholds, type: 'any').map{ file -> tuple(file.baseName, file) }.set{g_116_outputFileTSV_g_114}
 Channel.fromPath(params.d_optimized_thresholds, type: 'any').map{ file -> tuple(file.baseName, file) }.set{g_117_outputFileTSV_g_124}
 Channel.fromPath(params.j_optimized_thresholds, type: 'any').map{ file -> tuple(file.baseName, file) }.set{g_118_outputFileTSV_g_115}
@@ -164,7 +184,7 @@ input:
  set val(name), file(v_ref) from g_2_germlineFastaFile_g_92
 
 output:
- set val(name), file("new_V*")  into g_92_germlineFastaFile0_g_93, g_92_germlineFastaFile0_g_68, g_92_germlineFastaFile0_g_8, g_92_germlineFastaFile0_g0_22, g_92_germlineFastaFile0_g0_43, g_92_germlineFastaFile0_g0_47, g_92_germlineFastaFile0_g0_12
+ set val("v_ref"), file("new_V*")  into g_92_germlineFastaFile0_g_93, g_92_germlineFastaFile0_g_68, g_92_germlineFastaFile0_g_8, g_92_germlineFastaFile0_g0_22, g_92_germlineFastaFile0_g0_43, g_92_germlineFastaFile0_g0_47, g_92_germlineFastaFile0_g0_12
  file "*changes.csv" optional true  into g_92_csvFile1_g_113
 
 
@@ -262,6 +282,140 @@ with open(file_path, 'w'):
 }    
 }
 
+g_3_germlineFastaFile_g_97= g_3_germlineFastaFile_g_97.ifEmpty([""]) 
+
+
+process D_names_fasta {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*changes.csv$/) "changes/$filename"}
+input:
+ set val(name), file(D_ref) from g_3_germlineFastaFile_g_97
+
+output:
+ set val("d_ref"), file("new_D_novel_germline*")  into g_97_germlineFastaFile0_g11_16, g_97_germlineFastaFile0_g11_12, g_97_germlineFastaFile0_g14_0, g_97_germlineFastaFile0_g14_1, g_97_germlineFastaFile0_g0_16, g_97_germlineFastaFile0_g0_12
+ file "*changes.csv" optional true  into g_97_outputFileCSV1_g_113
+
+
+script:
+
+readArray_D_ref = D_ref.toString().split(' ')[0]
+
+if(readArray_D_ref.endsWith("fasta")){
+
+"""
+#!/usr/bin/env python3 
+
+import pandas as pd
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
+from hashlib import sha256 
+
+
+def fasta_to_dataframe(file_path):
+    data = {'ID': [], 'Sequence': []}
+    with open(file_path, 'r') as file:
+        for record in SeqIO.parse(file, 'fasta'):
+            data['ID'].append(record.id)
+            data['Sequence'].append(str(record.seq))
+
+        df = pd.DataFrame(data)
+        return df
+
+
+file_path = '${readArray_D_ref}'  # Replace with the actual path
+df = fasta_to_dataframe(file_path)
+
+
+index_counter = 30  # Start index
+
+for index, row in df.iterrows():
+    if '_' in row['ID']:
+        print(row['ID'])
+        parts = row['ID'].split('*')
+        row['ID'] = f"{parts[0]}*{index_counter}"
+        # df.at[index, 'ID'] = row['ID']  # Update DataFrame with the new value
+        index_counter += 1
+        
+        
+        
+def dataframe_to_fasta(df, output_file, description_column='Description', default_description=''):
+    records = []
+
+    for index, row in df.iterrows():
+        sequence_record = SeqRecord(Seq(row['Sequence']), id=row['ID'])
+
+        # Use the description from the DataFrame if available, otherwise use the default
+        description = row.get(description_column, default_description)
+        sequence_record.description = description
+
+        records.append(sequence_record)
+
+    with open(output_file, 'w') as output_handle:
+        SeqIO.write(records, output_handle, 'fasta')
+
+def save_changes_to_csv(old_df, new_df, output_file):
+    changes = []
+    for index, (old_row, new_row) in enumerate(zip(old_df.itertuples(), new_df.itertuples()), 1):
+        if old_row.ID != new_row.ID:
+            changes.append({'Row': index, 'Old_ID': old_row.ID, 'New_ID': new_row.ID})
+    
+    changes_df = pd.DataFrame(changes)
+    if not changes_df.empty:
+        changes_df.to_csv(output_file, index=False)
+        
+output_file_path = 'new_D_novel_germline.fasta'
+
+dataframe_to_fasta(df, output_file_path)
+
+
+file_path = '${readArray_D_ref}'  # Replace with the actual path
+old_df = fasta_to_dataframe(file_path)
+
+output_csv_file = "d_changes.csv"
+save_changes_to_csv(old_df, df, output_csv_file)
+
+"""
+} else{
+	
+"""
+#!/usr/bin/env python3 
+	
+
+file_path = 'new_D_novel_germline.txt'
+
+with open(file_path, 'w'):
+    pass
+    
+"""    
+}    
+}
+
+
+process Second_Alignment_D_MakeBlastDb {
+
+input:
+ set val(db_name), file(germlineFile) from g_97_germlineFastaFile0_g11_16
+
+output:
+ file "${db_name}"  into g11_16_germlineDb0_g11_9
+
+script:
+
+if(germlineFile.getName().endsWith("fasta")){
+	"""
+	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
+	mkdir -m777 ${db_name}
+	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
+	"""
+}else{
+	"""
+	echo something if off
+	"""
+}
+
+}
+
 
 process make_igblast_ndm {
 
@@ -284,6 +438,31 @@ ndm_file = db_name+".ndm"
 """
 make_igblast_ndm ${germlineFile} ${chain} ${ndm_file}
 """
+
+}
+
+
+process First_Alignment_D_MakeBlastDb {
+
+input:
+ set val(db_name), file(germlineFile) from g_97_germlineFastaFile0_g0_16
+
+output:
+ file "${db_name}"  into g0_16_germlineDb0_g0_9
+
+script:
+
+if(germlineFile.getName().endsWith("fasta")){
+	"""
+	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
+	mkdir -m777 ${db_name}
+	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
+	"""
+}else{
+	"""
+	echo something if off
+	"""
+}
 
 }
 
@@ -322,7 +501,7 @@ input:
  set val(name), file(J_ref) from g_4_germlineFastaFile_g_90
 
 output:
- set val(name), file("new_J_novel_germline*")  into g_90_germlineFastaFile0_g_91, g_90_germlineFastaFile0_g_101, g_90_germlineFastaFile0_g0_17, g_90_germlineFastaFile0_g0_12
+ set val("j_ref"), file("new_J_novel_germline*")  into g_90_germlineFastaFile0_g_91, g_90_germlineFastaFile0_g_101, g_90_germlineFastaFile0_g0_17, g_90_germlineFastaFile0_g0_12
  file "*changes.csv" optional true  into g_90_outputFileCSV1_g_113
 
 
@@ -465,140 +644,6 @@ aux_file = "J.aux"
 """
 annotate_j ${germlineFile} ${aux_file}
 """
-}
-
-g_3_germlineFastaFile_g_97= g_3_germlineFastaFile_g_97.ifEmpty([""]) 
-
-
-process D_names_fasta {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*changes.csv$/) "changes/$filename"}
-input:
- set val(name), file(D_ref) from g_3_germlineFastaFile_g_97
-
-output:
- set val(name), file("new_D_novel_germline*")  into g_97_germlineFastaFile0_g11_16, g_97_germlineFastaFile0_g11_12, g_97_germlineFastaFile0_g14_0, g_97_germlineFastaFile0_g14_1, g_97_germlineFastaFile0_g0_16, g_97_germlineFastaFile0_g0_12
- file "*changes.csv" optional true  into g_97_outputFileCSV1_g_113
-
-
-script:
-
-readArray_D_ref = D_ref.toString().split(' ')[0]
-
-if(readArray_D_ref.endsWith("fasta")){
-
-"""
-#!/usr/bin/env python3 
-
-import pandas as pd
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio import SeqIO
-from hashlib import sha256 
-
-
-def fasta_to_dataframe(file_path):
-    data = {'ID': [], 'Sequence': []}
-    with open(file_path, 'r') as file:
-        for record in SeqIO.parse(file, 'fasta'):
-            data['ID'].append(record.id)
-            data['Sequence'].append(str(record.seq))
-
-        df = pd.DataFrame(data)
-        return df
-
-
-file_path = '${readArray_D_ref}'  # Replace with the actual path
-df = fasta_to_dataframe(file_path)
-
-
-index_counter = 30  # Start index
-
-for index, row in df.iterrows():
-    if '_' in row['ID']:
-        print(row['ID'])
-        parts = row['ID'].split('*')
-        row['ID'] = f"{parts[0]}*{index_counter}"
-        # df.at[index, 'ID'] = row['ID']  # Update DataFrame with the new value
-        index_counter += 1
-        
-        
-        
-def dataframe_to_fasta(df, output_file, description_column='Description', default_description=''):
-    records = []
-
-    for index, row in df.iterrows():
-        sequence_record = SeqRecord(Seq(row['Sequence']), id=row['ID'])
-
-        # Use the description from the DataFrame if available, otherwise use the default
-        description = row.get(description_column, default_description)
-        sequence_record.description = description
-
-        records.append(sequence_record)
-
-    with open(output_file, 'w') as output_handle:
-        SeqIO.write(records, output_handle, 'fasta')
-
-def save_changes_to_csv(old_df, new_df, output_file):
-    changes = []
-    for index, (old_row, new_row) in enumerate(zip(old_df.itertuples(), new_df.itertuples()), 1):
-        if old_row.ID != new_row.ID:
-            changes.append({'Row': index, 'Old_ID': old_row.ID, 'New_ID': new_row.ID})
-    
-    changes_df = pd.DataFrame(changes)
-    if not changes_df.empty:
-        changes_df.to_csv(output_file, index=False)
-        
-output_file_path = 'new_D_novel_germline.fasta'
-
-dataframe_to_fasta(df, output_file_path)
-
-
-file_path = '${readArray_D_ref}'  # Replace with the actual path
-old_df = fasta_to_dataframe(file_path)
-
-output_csv_file = "d_changes.csv"
-save_changes_to_csv(old_df, df, output_csv_file)
-
-"""
-} else{
-	
-"""
-#!/usr/bin/env python3 
-	
-
-file_path = 'new_D_novel_germline.txt'
-
-with open(file_path, 'w'):
-    pass
-    
-"""    
-}    
-}
-
-
-process First_Alignment_D_MakeBlastDb {
-
-input:
- set val(db_name), file(germlineFile) from g_97_germlineFastaFile0_g0_16
-
-output:
- file "${db_name}"  into g0_16_germlineDb0_g0_9
-
-script:
-
-if(germlineFile.getName().endsWith("fasta")){
-	"""
-	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
-	mkdir -m777 ${db_name}
-	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
-	"""
-}else{
-	"""
-	echo something if off
-	"""
-}
-
 }
 
 
@@ -1300,7 +1345,7 @@ input:
  set val(name), file(airrseq_data) from g0_19_outputFileTSV0_g_80
 
 output:
- set val(name), file(outfile)  into g_80_germlineFastaFile0_g11_12, g_80_germlineFastaFile0_g11_9
+ set val(name), file(outfile)  into g_80_germlineFastaFile0_g11_12, g_80_germlineFastaFile0_g11_9, g_80_germlineFastaFile0_g131_12, g_80_germlineFastaFile0_g131_9
 
 script:
 
@@ -1716,266 +1761,6 @@ ndm_file = db_name+".ndm"
 """
 make_igblast_ndm ${germlineFile} ${chain} ${ndm_file}
 """
-
-}
-
-
-process First_Alignment_alignment_report_table {
-
-input:
- set val(name),file(collapse_pass) from g0_19_outputFileTSV0_g0_52
- set val(name1),file(collapse_fail) from g0_19_outputFileTSV1_g0_52
- set val(name2),file(makedb_fail) from g0_12_outputFileTSV2_g0_52
- set val(name3),file(makedb_pass) from g0_12_outputFileTSV0_g0_52
-
-output:
- file "*.tsv.gz"  into g0_52_outputFileTSV00
-
-script:
-name_alignment = params.First_Alignment_alignment_report_table.name_alignment
-
-outname = name+'_'+name_alignment
-
-
-collapse_pass = collapse_pass.toString().split(' ')[0]
-collapse_fail = collapse_fail.toString().split(' ')[0]
-makedb_fail = makedb_fail.toString().split(' ')[0]
-makedb_pass = makedb_pass.toString().split(' ')[0]
-
-"""
-#!/usr/bin/env Rscript
-
-## functions
-
-write_file <- function(x, file){
-	data.table::fwrite(
-	x = x,
-	file = file,
-	sep = "\t",
-	compress = "auto"
-	)	
-}
-
-##
-
-sample_name <- "${name}"
-db_collapse_pass <- data.table::fread("${collapse_pass}")
-db_collapse_fail <- data.table::fread("${collapse_fail}")
-db_makedb_fail <- data.table::fread("${makedb_fail}")
-db_makedb_pass <- data.table::fread("${makedb_pass}")
-
-## add status columns
-
-db_collapse_pass[['collapse_pass']] <- TRUE
-db_collapse_pass[['igblast_pass']] <- TRUE
-
-db_collapse_fail[['collapse_pass']] <- FALSE
-db_collapse_fail[['igblast_pass']] <- TRUE
-
-db_makedb_fail[['collapse_pass']] <- FALSE
-db_makedb_fail[['igblast_pass']] <- FALSE
-
-db_makedb_pass[['collapse_pass']] <- FALSE
-db_makedb_pass[['igblast_pass']] <- TRUE
-
-
-######### absolute numbers #########
-
-igblast_pass <- nrow(db_makedb_pass)
-igblast_pass_productive <- sum(db_makedb_pass[['productive']]==TRUE)
-igblast_fail <- nrow(db_makedb_fail)
-
-collapse_pass <- nrow(db_collapse_pass)
-collase_fail <- nrow(db_collapse_fail)
-
-db_collapse_pass[['v_gene']] <- alakazam::getGene(db_collapse_pass[['v_call']], first=FALSE)
-
-ma_collapse_pass <- sum(grepl(",", db_collapse_pass[['v_gene']]))
-
-tab <- data.frame(sample = sample_name, 
-				category = c(
-					'Igblast passed reads',
-					'Igblast failed reads',
-					'Igblast passed productive reads',
-					'Collapsed passed reads',
-					'Collapsed failed reads',
-					'Collapsed passed productive reads',
-					'Multiple ASC assignments'
-					),
-				values = c(
-					igblast_pass,
-					igblast_fail,
-					igblast_pass_productive,
-					collapse_pass,
-					collase_fail,
-					collapse_pass,
-					ma_collapse_pass
-					)
-)
-
-write_file(
-	x = tab,
-	file = paste0("${outname}","_absolute_numbers.tsv.gz")
-)
-
-
-remove(igblast_fail)
-
-####################################
-
-############# V start #############
-
-v_start_align_makedb <- as.data.frame(stringi::stri_locate_first(db_makedb_pass[['sequence_alignment']], regex = "[ATCG]"))
-v_start_align_makedb[['Stage']] <- 'IgBlast'
-v_start_align_makedb[['sample']] <- sample_name
-
-v_start_align_collapse <- as.data.frame(stringi::stri_locate_first(db_collapse_pass[['sequence_alignment']], regex = "[ATCG]"))
-v_start_align_collapse[['Stage']] <- 'Collapse'
-v_start_align_collapse[['sample']] <- sample_name
-
-v_start_align <- rbind(v_start_align_makedb, v_start_align_collapse)
-
-write_file(
-	x = v_start_align,
-	file = paste0("${outname}","_v_start.tsv.gz")
-)
-
-#######################################
-
-############# UTR5 length #############
-
-utr5_size_seq_makedb <- data.frame(
-						utr5_length = db_makedb_pass[['v_sequence_start']]-1, 
-						Stage = 'IgBlast', 
-						sample = sample_name, stringsAsFactors = FALSE)
-
-utr5_size_seq_collapse <- data.frame(
-						utr5_length = db_collapse_pass[['v_sequence_start']]-1, 
-						Stage = 'Collapse', 
-						sample = sample_name, stringsAsFactors = FALSE)
-
-utr5_size_seq <- rbind(utr5_size_seq_makedb, utr5_size_seq_collapse)
-
-write_file(
-	x = utr5_size_seq,
-	file = paste0("${outname}","_utr5_length.tsv.gz")
-)
-
-#######################################
-
-########### Collapse thresh #############
-
-# productive based on duplicate/consensus threshold
-
-col_thresh <- if('consensus_count' %in% names(db_collapse_pass)) 'consensus_count' else 'duplicate_count'
-
-thresh_val <- min(db_collapse_pass[[col_thresh]])
-
-thresh_seq <- 0:100
-
-thresh_values <- data.table::rbindlist(lapply(thresh_seq, function(t){
-	collapse_pass_prod_true_above_thresh <- sum(db_collapse_pass[[col_thresh]]>=t)
-	collapse_fail_prod_all_above_thresh <- sum(db_collapse_fail[[col_thresh]]>=t)
-	
-	data.frame(
-	Stage = 'Collapse',
-	sample = sample_name,
-	thresh_col = col_thresh,
-	thresh_val = t, 
-	above_threshold = collapse_fail_prod_all_above_thresh, stringsAsFactors = FALSE)
-}))
-
-write_file(
-	x = thresh_values,
-	file = paste0("${outname}","_collapse_thresh.tsv.gz")
-)
-
-#######################################
-
-
-"""
-
-
-}
-
-g0_12_outputFileTSV2_g0_27= g0_12_outputFileTSV2_g0_27.ifEmpty([""]) 
-g0_19_outputFileTSV1_g0_27= g0_19_outputFileTSV1_g0_27.ifEmpty([""]) 
-
-
-process First_Alignment_count_aligmant_pass_fail {
-
-input:
- set val(name), file(makeDb_pass) from g0_12_outputFileTSV0_g0_27
- set val(name1), file(makeDb_fail) from g0_12_outputFileTSV2_g0_27
- set val(name2), file(collapse_pass) from g0_19_outputFileTSV0_g0_27
- set val(name3), file(collapse_fail) from g0_19_outputFileTSV1_g0_27
-
-output:
- set val(name), file("*txt")  into g0_27_logFile00
-
-script:
-
-readArray_makeDb_pass = makeDb_pass.toString().split(' ')
-readArray_makeDb_fail = makeDb_fail.toString().split(' ')
-readArray_collapse_pass = collapse_pass.toString().split(' ')
-readArray_collapse_fail = collapse_fail.toString().split(' ')
-
-"""
-#!/usr/bin/env Rscript 
-
-makeDb_pass<-read.csv("${readArray_makeDb_pass[0]}", sep="\t")
-makeDb_fail<- tryCatch(read.csv("${readArray_makeDb_fail[0]}", sep="\t"), error=function(e) NULL)
-nrow_mdb_fail <- if(!is.null(makeDb_fail)) nrow(makeDb_fail) else 0
-
-collapse_pass<-read.csv("${readArray_collapse_pass[0]}", sep="\t")
-collapse_fail<- tryCatch(read.csv("${readArray_collapse_fail[0]}", sep="\t"), error=function(e) NULL)
-nrow_collapse_fail <- if(!is.null(collapse_fail)) nrow(collapse_fail) else 0
-
-x<-"${readArray_makeDb_pass[0]}"
-
-lines <- c(
-    paste("START>", "After IgBLAST+makedb"),
-    paste("PASS>", nrow(makeDb_pass)),
-    paste("FAIL>", nrow_mdb_fail),
-    paste("END>", "After IgBLAST+makedb"),
-    "",
-    paste("START>", "after DUPCOUNT filter"),
-    paste("PASS>", nrow(collapse_pass)),
-    paste("FAIL>", nrow_collapse_fail),
-    paste("END>", "after DUPCOUNT filter"),
-    ""
-  )
-
-
-file_path <- paste(chartr(".", "1", x),"output.txt", sep="-")
-
-cat(lines, sep = "\n", file = file_path, append = TRUE)
-"""
-
-}
-
-
-process Second_Alignment_D_MakeBlastDb {
-
-input:
- set val(db_name), file(germlineFile) from g_97_germlineFastaFile0_g11_16
-
-output:
- file "${db_name}"  into g11_16_germlineDb0_g11_9
-
-script:
-
-if(germlineFile.getName().endsWith("fasta")){
-	"""
-	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
-	mkdir -m777 ${db_name}
-	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
-	"""
-}else{
-	"""
-	echo something if off
-	"""
-}
 
 }
 
@@ -2837,6 +2622,7 @@ write.table(df, sep = "\t", file = paste0("${outname}", ".tsv"), row.names = FAL
 }
 
 g_97_outputFileCSV1_g_113= g_97_outputFileCSV1_g_113.ifEmpty([""]) 
+g_90_outputFileCSV1_g_113= g_90_outputFileCSV1_g_113.ifEmpty([""]) 
 
 
 process changes_names_for_piglet {
@@ -2875,7 +2661,7 @@ select_columns <- if ("${chain}" == "IGH") c("sequence_id", "v_call", "d_call", 
 data <- data.table::fread("${airrFile}", data.table = F)
 
 # Load V change file
-change_file <- "${v_change}"
+change_file <- "v_changes.csv"
 changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
 
 # Convert to data.table
@@ -2888,35 +2674,47 @@ data[, `:=`(
   j_call_changed = j_call
 )]
 
-# Apply changes to v_call
-for (change in 1:nrow(changes)) {
-  old_id <- changes[change, "old_id"]
-  new_id <- changes[change, "new_id"]
-  data[str_detect(v_call, fixed(new_id)), v_call_changed := old_id]
+if (file.exists(change_file)) {
+	# Apply changes to v_call
+	for (change in 1:nrow(changes)) {
+	  old_id <- changes[change, "old_id"]
+	  new_id <- changes[change, "new_id"]
+	  data[str_detect(v_call, fixed(new_id)), v_call_changed := old_id]
+	}
+	data[["v_call"]] <- data[["v_call_changed"]]
+} else {
+  message("Change file does not exist. No changes applied to j_call.")
 }
-data[["v_call"]] <- data[["v_call_changed"]]
 
 # Apply changes to d_call if chain is IGH
 if ("${chain}" == "IGH") {
-  change_file <- "${d_change}"
+  change_file <- "d_changes.csv"
+  if (file.exists(change_file)) {
+	  changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
+	  for (change in 1:nrow(changes)) {
+	    old_id <- changes[change, "old_id"]
+	    new_id <- changes[change, "new_id"]
+	    data[, d_call_changed := str_replace_all(d_call_changed, fixed(new_id), old_id)]
+	  }
+	  data[["d_call"]] <- data[["d_call_changed"]]
+	} else {
+	  message("Change file does not exist. No changes applied to d_call.")
+	}
+}
+
+change_file <- "j_changes.csv"
+# Apply changes to j_call
+if (file.exists(change_file)) {
   changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
   for (change in 1:nrow(changes)) {
     old_id <- changes[change, "old_id"]
     new_id <- changes[change, "new_id"]
-    data[, d_call_changed := str_replace_all(d_call_changed, fixed(new_id), old_id)]
+    data[, j_call_changed := str_replace_all(j_call_changed, fixed(new_id), old_id)]
   }
-  data[["d_call"]] <- data[["d_call_changed"]]
+  data[["j_call"]] <- data[["j_call_changed"]]
+} else {
+  message("Change file does not exist. No changes applied to j_call.")
 }
-
-# Apply changes to j_call
-change_file <- "${j_change}"
-changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
-for (change in 1:nrow(changes)) {
-  old_id <- changes[change, "old_id"]
-  new_id <- changes[change, "new_id"]
-  data[, j_call_changed := str_replace_all(j_call_changed, fixed(new_id), old_id)]
-}
-data[["j_call"]] <- data[["j_call_changed"]]
 
 # Write the full output file
 write.table(data, sep = "\t", file = paste0("${outname}", ".tsv"), row.names = FALSE)
@@ -2931,304 +2729,48 @@ write.table(data_selected, sep = "\t", file = paste0("${outname_selected}", ".ts
 }
 
 
-process genotype_piglet_j_call {
+process add_full_seq_col {
 
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_genotype_report.tsv$/) "genotype_report/$filename"}
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_with_full_seq.tsv$/) "rearrangements/$filename"}
 input:
- set val(name), file(ref) from g_4_germlineFastaFile_g_115
- set val(name1),file(airrFile) from g_113_outputFileTSV1_g_115
- set val(name2),file(optimized_thresholds) from g_118_outputFileTSV_g_115
- set val(name3), file(hashed_germline_file) from g_102_germlineFastaFile0_g_115
- set val(name4), file(germline_file) from g_101_germlineFastaFile1_g_115
+ set val(name), file(airrSeq) from g_94_fastaFile_g_125
+ set val(name1),file(airrFile) from g_113_outputFileTSV0_g_125
 
 output:
- set val(name1),file("*_genotype_report.tsv")  into g_115_outputFileTSV00
+ set val(name1),file("*_with_full_seq.tsv")  into g_125_outputFileTSV00
 
 script:
-call = params.genotype_piglet_j_call.call
 
-ref_a = ref.toString().split(' ')[0]
+outname = airrFile.toString() - '.tsv' +"_with_full_seq"
+
 
 """
 #!/usr/bin/env Rscript 
 
-library(data.table)
-library(alakazam)
-library(ggplot2)
-library(dplyr)
-library(parallel)
-library(pbapply)
-library(RColorBrewer)
-library(ggforce)
-library(patchwork)
-library(progressr)
+
+# Load necessary libraries
 library(Biostrings)
-library(stringr)
-
-
-novel_germline <- tigger::readIgFasta("${hashed_germline_file}")
-germline <- tigger::readIgFasta("${germline_file}")
-novel_germline <- data.table(allele_hashed = names(novel_germline), sequence = novel_germline)
-germline <- data.table(allele = names(germline), sequence = germline)
-germ <- merge(germline, novel_germline, by = "sequence", all = TRUE)
-
-digger_germline <- readDNAStringSet("${ref}")
-digger_germline <- data.table(allele = names(digger_germline), sequence = as.character(digger_germline))
-
-germ <- merge(germ, digger_germline, by = "sequence", all = TRUE)
-
-hashed_allele <- germ[allele.x != allele_hashed,]
-hashed_allele <- setNames(hashed_allele[["allele.x"]], hashed_allele[["allele_hashed"]])
-
-# Map allele.x to allele.y, preserving alleles not in the mapping
-germ[["allele_a"]] <- ifelse(is.na(germ[["allele.y"]]), germ[["allele.x"]], germ[["allele.y"]])
-
-germ[["allele"]] <- germ[["allele_a"]]
-
-reference <- setNames(germ[["sequence"]], germ[["allele"]])
-
-    
-optimized_thresholds <- fread(file = "${optimized_thresholds}")   
-  
-split_rows <- function(data) {
-  # Identify rows with '/' in the allele column
-  split_data <- data[grepl("/", allele)]
-  
-  # Split those rows into separate rows for each allele
-  split_data <- split_data[, .(
-    allele = if (length(unlist(strsplit(allele, "/"))) > 0) unlist(strsplit(allele, "/")) else NA_character_,
-    threshold, threshold_min, threshold_max, mean_f1
-  ), by = seq_len(nrow(split_data))]
-  
-  # Remove the seq_len column created during split
-  split_data[, seq_len := NULL]
-  
-  # Combine the original rows without '/' with the newly split rows
-  combined_data <- rbind(data[!grepl("/", allele)], split_data, fill = TRUE)
-  
-  return(combined_data)
-}
-
-# Apply the function to the data
-optimized_thresholds <- split_rows(optimized_thresholds)
-
-print(optimized_thresholds)
-
-data <- data.table::fread("${airrFile}", data.table = F)
-setDT(data)
-data[, ${call}:= ifelse(${call} %in% names(hashed_allele), hashed_allele[${call}], ${call})]
-
-
-samp <- strsplit(basename("${airrFile}"),"[.]")[[1]][1]
-
-fasta_data <- readDNAStringSet("${ref}")
-alleles_from_fasta <- names(fasta_data)
-al <- data[, "${call}"]
-a <- unique(al[["${call}"]])
-a = unlist(lapply(a, function(x) strsplit(x, ",")[[1]]))
-a <-unique(a)
-alleles_from_fasta <- c(alleles_from_fasta,a)
-
-
-# Create a personal allele table
-personal_alleles <- data.table(sample = samp, allele = unique(alleles_from_fasta))
-personal_alleles[, gene := str_extract(allele, "^[^*]*")]
-
-personal_alleles[, threshold := sapply(allele, function(x) 
-optimized_thresholds[allele == strsplit(x,"_")[[1]][1], threshold][1]
-)]
-
-alleles_count <- data.table(sample = samp, "${call}" = data[["${call}"]])
-alleles_count[, multiple := 1/(stringi::stri_count_fixed("${call}", ",") + 1)]
-alleles_count <- alleles_count[, .(${call} = unlist(strsplit(${call}, ","))), by = .(sample, multiple)]
-alleles_count <- alleles_count[, .(count = sum(multiple)), by = "${call}"]
-setnames(alleles_count, "${call}", "allele")
-alleles_count[, gene := str_extract(allele, "^[^*]*")]
-alleles_count[, sample := samp]
-
-# Merge personal alleles and counts
-personal_alleles[, allele := as.character(allele)]
-alleles_count[, allele := as.character(allele)]
-alleles_count[, gene := as.character(gene)]
-
-genotypes <- merge(
-                personal_alleles[, .(sample, gene, allele, threshold)], 
-                alleles_count, 
-                by = c("sample", "gene", "allele"), 
-                all.x = TRUE
-              )
-                   
-genotypes[is.na(count), count := 0]
-
-print(genotypes)
-
-# Summarize count by sample and add to the final result table
-genotypes [, sum_count := sum(count), by = .(sample)]
-
-
-z_score <- function(Ni, N, Pi) {
-    (Ni - Pi * N) / sqrt(Pi * N * (1 - Pi))
-  }
-
-
-genotypes[, z_score := z_score(count, sum_count, threshold), by = .(sample, allele)]
-genotypes[, ref := reference[allele], by = "allele"]
-setDT(genotypes)
-genotypes[, in_genomic := allele %in% digger_germline[["allele"]]]
-
-write.table(genotypes, file = paste0("${call}","_genotype_report.tsv"), row.names = F, sep = "\t")
-
-"""
-
-}
-
-
-process genotype_piglet_v_call {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_genotype_report.tsv$/) "genotype_report/$filename"}
-input:
- set val(name), file(ref) from g_2_germlineFastaFile_g_114
- set val(name1),file(airrFile) from g_113_outputFileTSV1_g_114
- set val(name2),file(optimized_thresholds) from g_116_outputFileTSV_g_114
- set val(name3), file(hashed_germline_file) from g_70_germlineFastaFile0_g_114
- set val(name4), file(germline_file) from g_8_germlineFastaFile1_g_114
-
-output:
- set val(name1),file("*_genotype_report.tsv")  into g_114_outputFileTSV00
-
-script:
-call = params.genotype_piglet_v_call.call
-
-ref_a = ref.toString().split(' ')[0]
-
-"""
-#!/usr/bin/env Rscript 
-
-library(data.table)
-library(alakazam)
-library(ggplot2)
 library(dplyr)
-library(parallel)
-library(pbapply)
-library(RColorBrewer)
-library(ggforce)
-library(patchwork)
-library(progressr)
-library(Biostrings)
-library(stringr)
 
+# Read the FASTA file
+fasta_seqs <- readDNAStringSet("${airrSeq}")
 
-novel_germline <- tigger::readIgFasta("${hashed_germline_file}")
-germline <- tigger::readIgFasta("${germline_file}")
-novel_germline <- data.table(allele_hashed = names(novel_germline), sequence = novel_germline)
-germline <- data.table(allele = names(germline), sequence = germline)
-germ <- merge(germline, novel_germline, by = "sequence", all = TRUE)
+# Convert FASTA data to a dataframe with sequence_id and full_seq
+fasta_df <- data.frame(
+  sequence_id = names(fasta_seqs),
+  full_seq = as.character(fasta_seqs)
+)
 
-digger_germline <- readDNAStringSet("${ref}")
-digger_germline <- data.table(allele = names(digger_germline), sequence = as.character(digger_germline))
+# Read the TSV file
+tsv_data <- data.table::fread("${airrFile}", data.table = F)
 
-germ <- merge(germ, digger_germline, by = "sequence", all = TRUE)
+# Merge the TSV file with FASTA data on sequence_id
+merged_data <- tsv_data %>%
+  left_join(fasta_df, by = "sequence_id")
 
-hashed_allele <- germ[allele.x != allele_hashed,]
-hashed_allele <- setNames(hashed_allele[["allele.x"]], hashed_allele[["allele_hashed"]])
+# Save the updated TSV with the full_seq column
+write.table(merged_data, sep = "\t", file = paste0("${outname}", ".tsv"), row.names = FALSE)
 
-# Map allele.x to allele.y, preserving alleles not in the mapping
-germ[["allele_a"]] <- ifelse(is.na(germ[["allele.y"]]), germ[["allele.x"]], germ[["allele.y"]])
-
-germ[["allele"]] <- germ[["allele_a"]]
-
-reference <- setNames(germ[["sequence"]], germ[["allele"]])
-
-    
-optimized_thresholds <- fread(file = "${optimized_thresholds}")   
-  
-split_rows <- function(data) {
-  # Identify rows with '/' in the allele column
-  split_data <- data[grepl("/", allele)]
-  
-  # Split those rows into separate rows for each allele
-  split_data <- split_data[, .(
-    allele = if (length(unlist(strsplit(allele, "/"))) > 0) unlist(strsplit(allele, "/")) else NA_character_,
-    threshold, threshold_min, threshold_max, mean_f1
-  ), by = seq_len(nrow(split_data))]
-  
-  # Remove the seq_len column created during split
-  split_data[, seq_len := NULL]
-  
-  # Combine the original rows without '/' with the newly split rows
-  combined_data <- rbind(data[!grepl("/", allele)], split_data, fill = TRUE)
-  
-  return(combined_data)
-}
-
-# Apply the function to the data
-optimized_thresholds <- split_rows(optimized_thresholds)
-
-print(optimized_thresholds)
-
-data <- data.table::fread("${airrFile}", data.table = F)
-setDT(data)
-data[, ${call}:= ifelse(${call} %in% names(hashed_allele), hashed_allele[${call}], ${call})]
-
-
-samp <- strsplit(basename("${airrFile}"),"[.]")[[1]][1]
-
-fasta_data <- readDNAStringSet("${ref}")
-alleles_from_fasta <- names(fasta_data)
-al <- data[, "${call}"]
-a <- unique(al[["${call}"]])
-a = unlist(lapply(a, function(x) strsplit(x, ",")[[1]]))
-a <-unique(a)
-alleles_from_fasta <- c(alleles_from_fasta,a)
-
-
-# Create a personal allele table
-personal_alleles <- data.table(sample = samp, allele = unique(alleles_from_fasta))
-personal_alleles[, gene := str_extract(allele, "^[^*]*")]
-
-personal_alleles[, threshold := sapply(allele, function(x) 
-optimized_thresholds[allele == strsplit(x,"_")[[1]][1], threshold][1]
-)]
-
-alleles_count <- data.table(sample = samp, "${call}" = data[["${call}"]])
-alleles_count[, multiple := 1/(stringi::stri_count_fixed("${call}", ",") + 1)]
-alleles_count <- alleles_count[, .(${call} = unlist(strsplit(${call}, ","))), by = .(sample, multiple)]
-alleles_count <- alleles_count[, .(count = sum(multiple)), by = "${call}"]
-setnames(alleles_count, "${call}", "allele")
-alleles_count[, gene := str_extract(allele, "^[^*]*")]
-alleles_count[, sample := samp]
-
-# Merge personal alleles and counts
-personal_alleles[, allele := as.character(allele)]
-alleles_count[, allele := as.character(allele)]
-alleles_count[, gene := as.character(gene)]
-
-genotypes <- merge(
-                personal_alleles[, .(sample, gene, allele, threshold)], 
-                alleles_count, 
-                by = c("sample", "gene", "allele"), 
-                all.x = TRUE
-              )
-                   
-genotypes[is.na(count), count := 0]
-
-print(genotypes)
-
-# Summarize count by sample and add to the final result table
-genotypes [, sum_count := sum(count), by = .(sample)]
-
-
-z_score <- function(Ni, N, Pi) {
-    (Ni - Pi * N) / sqrt(Pi * N * (1 - Pi))
-  }
-
-
-genotypes[, z_score := z_score(count, sum_count, threshold), by = .(sample, allele)]
-genotypes[, ref := reference[allele], by = "allele"]
-setDT(genotypes)
-genotypes[, in_genomic := allele %in% digger_germline[["allele"]]]
-
-write.table(genotypes, file = paste0("${call}","_genotype_report.tsv"), row.names = F, sep = "\t")
 
 """
 
@@ -3245,6 +2787,7 @@ input:
 
 output:
  set val(name1),file("*_genotype_report.tsv")  into g_124_outputFileTSV00
+ set val(name1),file("*_personal_reference.fasta")  into g_124_germlineFastaFile1_g_128
 
 script:
 
@@ -3266,7 +2809,10 @@ library(patchwork)
 library(progressr)
 library(Biostrings)
 library(stringr)
-
+library(piglet)
+library(tigger)
+library(data.table)
+library(dplyr)
 
 digger_germline <- readDNAStringSet("${ref}")
 digger_germline <- data.table(allele = names(digger_germline), sequence = as.character(digger_germline))
@@ -3369,20 +2915,1417 @@ genotypes[, in_genomic := allele %in% digger_germline[["allele"]]]
 write.table(genotypes, file = paste0("${call}","_genotype_report.tsv"), row.names = F, sep = "\t")
 
 
+genotypes <- genotypes[genotypes[["z_score"]]>=0,]
+
+germline_db_new <- DNAStringSet()
+
+# Loop through each row in genotypes and add to germline_db_new
+for (i in 1:nrow(genotypes)) {
+  allele <- genotypes[["allele"]][i]
+  seq <- genotypes[["ref"]][i]
+  
+  seq_set <- DNAStringSet(seq)
+  names(seq_set) <- allele  # Set the name for the sequence
+  
+  # Append each allele and its sequence to germline_db_new
+  germline_db_new <- append(germline_db_new, seq_set)
+}
+
+writeFasta(germline_db_new, file = paste0("${call}","_personal_reference.fasta"))
+"""
+
+
+}
+
+g_124_germlineFastaFile1_g_128= g_124_germlineFastaFile1_g_128.ifEmpty([""]) 
+
+
+process D_names_fasta_1 {
+
+input:
+ set val(name), file(D_ref) from g_124_germlineFastaFile1_g_128
+
+output:
+ set val("d_ref"), file("new_D_novel_germline*")  into g_128_germlineFastaFile0_g131_16, g_128_germlineFastaFile0_g131_12
+ file "*changes.csv" optional true  into g_128_outputFileCSV1_g_134
+
+
+script:
+
+readArray_D_ref = D_ref.toString().split(' ')[0]
+
+if(readArray_D_ref.endsWith("fasta")){
+
+"""
+#!/usr/bin/env python3 
+
+import pandas as pd
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
+from hashlib import sha256 
+
+
+def fasta_to_dataframe(file_path):
+    data = {'ID': [], 'Sequence': []}
+    with open(file_path, 'r') as file:
+        for record in SeqIO.parse(file, 'fasta'):
+            data['ID'].append(record.id)
+            data['Sequence'].append(str(record.seq))
+
+        df = pd.DataFrame(data)
+        return df
+
+
+file_path = '${readArray_D_ref}'  # Replace with the actual path
+df = fasta_to_dataframe(file_path)
+
+
+index_counter = 30  # Start index
+
+for index, row in df.iterrows():
+    if '_' in row['ID']:
+        print(row['ID'])
+        parts = row['ID'].split('*')
+        row['ID'] = f"{parts[0]}*{index_counter}"
+        # df.at[index, 'ID'] = row['ID']  # Update DataFrame with the new value
+        index_counter += 1
+        
+        
+        
+def dataframe_to_fasta(df, output_file, description_column='Description', default_description=''):
+    records = []
+
+    for index, row in df.iterrows():
+        sequence_record = SeqRecord(Seq(row['Sequence']), id=row['ID'])
+
+        # Use the description from the DataFrame if available, otherwise use the default
+        description = row.get(description_column, default_description)
+        sequence_record.description = description
+
+        records.append(sequence_record)
+
+    with open(output_file, 'w') as output_handle:
+        SeqIO.write(records, output_handle, 'fasta')
+
+def save_changes_to_csv(old_df, new_df, output_file):
+    changes = []
+    for index, (old_row, new_row) in enumerate(zip(old_df.itertuples(), new_df.itertuples()), 1):
+        if old_row.ID != new_row.ID:
+            changes.append({'Row': index, 'Old_ID': old_row.ID, 'New_ID': new_row.ID})
+    
+    changes_df = pd.DataFrame(changes)
+    if not changes_df.empty:
+        changes_df.to_csv(output_file, index=False)
+        
+output_file_path = 'new_D_novel_germline.fasta'
+
+dataframe_to_fasta(df, output_file_path)
+
+
+file_path = '${readArray_D_ref}'  # Replace with the actual path
+old_df = fasta_to_dataframe(file_path)
+
+output_csv_file = "d_changes.csv"
+save_changes_to_csv(old_df, df, output_csv_file)
+
+"""
+} else{
+	
+"""
+#!/usr/bin/env python3 
+	
+
+file_path = 'new_D_novel_germline.txt'
+
+with open(file_path, 'w'):
+    pass
+    
+"""    
+}    
+}
+
+
+process third_Alignment_D_MakeBlastDb {
+
+input:
+ set val(db_name), file(germlineFile) from g_128_germlineFastaFile0_g131_16
+
+output:
+ file "${db_name}"  into g131_16_germlineDb0_g131_9
+
+script:
+
+if(germlineFile.getName().endsWith("fasta")){
+	"""
+	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
+	mkdir -m777 ${db_name}
+	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
+	"""
+}else{
+	"""
+	echo something if off
+	"""
+}
+
+}
+
+
+process genotype_piglet_j_call {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_genotype_report.tsv$/) "genotype_report/$filename"}
+input:
+ set val(name), file(ref) from g_4_germlineFastaFile_g_115
+ set val(name1),file(airrFile) from g_113_outputFileTSV1_g_115
+ set val(name2),file(optimized_thresholds) from g_118_outputFileTSV_g_115
+ set val(name3), file(hashed_germline_file) from g_102_germlineFastaFile0_g_115
+ set val(name4), file(germline_file) from g_101_germlineFastaFile1_g_115
+
+output:
+ set val(name1),file("*_genotype_report.tsv")  into g_115_outputFileTSV00
+ set val(name1),file("*_personal_reference.fasta")  into g_115_germlineFastaFile1_g_129
+
+script:
+call = params.genotype_piglet_j_call.call
+
+ref_a = ref.toString().split(' ')[0]
+
+"""
+#!/usr/bin/env Rscript 
+
+library(data.table)
+library(alakazam)
+library(ggplot2)
+library(dplyr)
+library(parallel)
+library(pbapply)
+library(RColorBrewer)
+library(ggforce)
+library(patchwork)
+library(progressr)
+library(Biostrings)
+library(stringr)
+library(piglet)
+library(tigger)
+library(data.table)
+library(dplyr)
+
+novel_germline <- tigger::readIgFasta("${hashed_germline_file}")
+germline <- tigger::readIgFasta("${germline_file}")
+novel_germline <- data.table(allele_hashed = names(novel_germline), sequence = novel_germline)
+germline <- data.table(allele = names(germline), sequence = germline)
+germ <- merge(germline, novel_germline, by = "sequence", all = TRUE)
+
+digger_germline <- readDNAStringSet("${ref}")
+digger_germline <- data.table(allele = names(digger_germline), sequence = as.character(digger_germline))
+
+germ <- merge(germ, digger_germline, by = "sequence", all = TRUE)
+
+hashed_allele <- germ[allele.x != allele_hashed,]
+hashed_allele <- setNames(hashed_allele[["allele.x"]], hashed_allele[["allele_hashed"]])
+
+# Map allele.x to allele.y, preserving alleles not in the mapping
+germ[["allele_a"]] <- ifelse(is.na(germ[["allele.y"]]), germ[["allele.x"]], germ[["allele.y"]])
+
+germ[["allele"]] <- germ[["allele_a"]]
+
+reference <- setNames(germ[["sequence"]], germ[["allele"]])
+
+    
+optimized_thresholds <- fread(file = "${optimized_thresholds}")   
+  
+split_rows <- function(data) {
+  # Identify rows with '/' in the allele column
+  split_data <- data[grepl("/", allele)]
+  
+  # Split those rows into separate rows for each allele
+  split_data <- split_data[, .(
+    allele = if (length(unlist(strsplit(allele, "/"))) > 0) unlist(strsplit(allele, "/")) else NA_character_,
+    threshold, threshold_min, threshold_max, mean_f1
+  ), by = seq_len(nrow(split_data))]
+  
+  # Remove the seq_len column created during split
+  split_data[, seq_len := NULL]
+  
+  # Combine the original rows without '/' with the newly split rows
+  combined_data <- rbind(data[!grepl("/", allele)], split_data, fill = TRUE)
+  
+  return(combined_data)
+}
+
+# Apply the function to the data
+optimized_thresholds <- split_rows(optimized_thresholds)
+
+print(optimized_thresholds)
+
+data <- data.table::fread("${airrFile}", data.table = F)
+setDT(data)
+data[, ${call}:= ifelse(${call} %in% names(hashed_allele), hashed_allele[${call}], ${call})]
+
+
+samp <- strsplit(basename("${airrFile}"),"[.]")[[1]][1]
+
+fasta_data <- readDNAStringSet("${ref}")
+alleles_from_fasta <- names(fasta_data)
+al <- data[, "${call}"]
+a <- unique(al[["${call}"]])
+a = unlist(lapply(a, function(x) strsplit(x, ",")[[1]]))
+a <-unique(a)
+alleles_from_fasta <- c(alleles_from_fasta,a)
+
+
+# Create a personal allele table
+personal_alleles <- data.table(sample = samp, allele = unique(alleles_from_fasta))
+personal_alleles[, gene := str_extract(allele, "^[^*]*")]
+
+personal_alleles[, threshold := sapply(allele, function(x) 
+optimized_thresholds[allele == strsplit(x,"_")[[1]][1], threshold][1]
+)]
+
+alleles_count <- data.table(sample = samp, "${call}" = data[["${call}"]])
+alleles_count[, multiple := 1/(stringi::stri_count_fixed("${call}", ",") + 1)]
+alleles_count <- alleles_count[, .(${call} = unlist(strsplit(${call}, ","))), by = .(sample, multiple)]
+alleles_count <- alleles_count[, .(count = sum(multiple)), by = "${call}"]
+setnames(alleles_count, "${call}", "allele")
+alleles_count[, gene := str_extract(allele, "^[^*]*")]
+alleles_count[, sample := samp]
+
+# Merge personal alleles and counts
+personal_alleles[, allele := as.character(allele)]
+alleles_count[, allele := as.character(allele)]
+alleles_count[, gene := as.character(gene)]
+
+genotypes <- merge(
+                personal_alleles[, .(sample, gene, allele, threshold)], 
+                alleles_count, 
+                by = c("sample", "gene", "allele"), 
+                all.x = TRUE
+              )
+                   
+genotypes[is.na(count), count := 0]
+
+print(genotypes)
+
+# Summarize count by sample and add to the final result table
+genotypes [, sum_count := sum(count), by = .(sample)]
+
+
+z_score <- function(Ni, N, Pi) {
+    (Ni - Pi * N) / sqrt(Pi * N * (1 - Pi))
+  }
+
+
+genotypes[, z_score := z_score(count, sum_count, threshold), by = .(sample, allele)]
+genotypes[, ref := reference[allele], by = "allele"]
+setDT(genotypes)
+genotypes[, in_genomic := allele %in% digger_germline[["allele"]]]
+
+write.table(genotypes, file = paste0("${call}","_genotype_report.tsv"), row.names = F, sep = "\t")
+
+
+genotypes <- genotypes[genotypes[["z_score"]]>=0,]
+
+germline_db_new <- DNAStringSet()
+
+# Loop through each row in genotypes and add to germline_db_new
+for (i in 1:nrow(genotypes)) {
+  allele <- genotypes[["allele"]][i]
+  seq <- genotypes[["ref"]][i]
+  
+  seq_set <- DNAStringSet(seq)
+  names(seq_set) <- allele  # Set the name for the sequence
+  
+  # Append each allele and its sequence to germline_db_new
+  germline_db_new <- append(germline_db_new, seq_set)
+}
+
+writeFasta(germline_db_new, file = paste0("${call}","_personal_reference.fasta"))
+"""
+
+}
+
+g_115_germlineFastaFile1_g_129= g_115_germlineFastaFile1_g_129.ifEmpty([""]) 
+
+
+process J_names_fasta_1 {
+
+input:
+ set val(name), file(J_ref) from g_115_germlineFastaFile1_g_129
+
+output:
+ set val("j_ref"), file("new_J_novel_germline*")  into g_129_germlineFastaFile0_g_132, g_129_germlineFastaFile0_g131_17, g_129_germlineFastaFile0_g131_12
+ file "*changes.csv" optional true  into g_129_outputFileCSV1_g_134
+
+
+script:
+
+readArray_j_ref = J_ref.toString().split(' ')[0]
+
+if(readArray_j_ref.endsWith("fasta")){
+
+"""
+#!/usr/bin/env python3 
+
+import pandas as pd
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
+from hashlib import sha256 
+
+
+def fasta_to_dataframe(file_path):
+    data = {'ID': [], 'Sequence': []}
+    with open(file_path, 'r') as file:
+        for record in SeqIO.parse(file, 'fasta'):
+            data['ID'].append(record.id)
+            data['Sequence'].append(str(record.seq))
+
+        df = pd.DataFrame(data)
+        return df
+
+
+file_path = '${readArray_j_ref}'  # Replace with the actual path
+df = fasta_to_dataframe(file_path)
+
+
+index_counter = 30  # Start index
+
+for index, row in df.iterrows():
+    if '_' in row['ID']:
+        print(row['ID'])
+        parts = row['ID'].split('*')
+        row['ID'] = f"{parts[0]}*{index_counter}"
+        # df.at[index, 'ID'] = row['ID']  # Update DataFrame with the new value
+        index_counter += 1
+        
+        
+        
+def dataframe_to_fasta(df, output_file, description_column='Description', default_description=''):
+    records = []
+
+    for index, row in df.iterrows():
+        sequence_record = SeqRecord(Seq(row['Sequence']), id=row['ID'])
+
+        # Use the description from the DataFrame if available, otherwise use the default
+        description = row.get(description_column, default_description)
+        sequence_record.description = description
+
+        records.append(sequence_record)
+
+    with open(output_file, 'w') as output_handle:
+        SeqIO.write(records, output_handle, 'fasta')
+
+def save_changes_to_csv(old_df, new_df, output_file):
+    changes = []
+    for index, (old_row, new_row) in enumerate(zip(old_df.itertuples(), new_df.itertuples()), 1):
+        if old_row.ID != new_row.ID:
+            changes.append({'Row': index, 'Old_ID': old_row.ID, 'New_ID': new_row.ID})
+    
+    changes_df = pd.DataFrame(changes)
+    if not changes_df.empty:
+        changes_df.to_csv(output_file, index=False)
+
+
+output_file_path = 'new_J_novel_germline.fasta'
+
+dataframe_to_fasta(df, output_file_path)
+
+
+file_path = '${readArray_j_ref}'  # Replace with the actual path
+old_df = fasta_to_dataframe(file_path)
+
+output_csv_file = "j_changes.csv"
+save_changes_to_csv(old_df, df, output_csv_file)
+
+"""
+} else{
+	
+"""
+#!/usr/bin/env python3 
+	
+
+file_path = 'new_J_novel_germline.txt'
+
+with open(file_path, 'w'):
+    pass
+    
+"""    
+}    
+}
+
+
+process third_Alignment_J_MakeBlastDb {
+
+input:
+ set val(db_name), file(germlineFile) from g_129_germlineFastaFile0_g131_17
+
+output:
+ file "${db_name}"  into g131_17_germlineDb0_g131_9
+
+script:
+
+if(germlineFile.getName().endsWith("fasta")){
+	"""
+	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
+	mkdir -m777 ${db_name}
+	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
+	"""
+}else{
+	"""
+	echo something if off
+	"""
+}
+
+}
+
+
+process make_igblast_annotate_j_third {
+
+input:
+ set val(db_name), file(germlineFile) from g_129_germlineFastaFile0_g_132
+
+output:
+ file aux_file  into g_132_outputFileTxt0_g131_9
+
+script:
+
+
+
+aux_file = "J.aux"
+
+"""
+annotate_j ${germlineFile} ${aux_file}
+"""
+}
+
+
+process genotype_piglet_v_call {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_genotype_report.tsv$/) "genotype_report/$filename"}
+input:
+ set val(name), file(ref) from g_2_germlineFastaFile_g_114
+ set val(name1),file(airrFile) from g_113_outputFileTSV1_g_114
+ set val(name2),file(optimized_thresholds) from g_116_outputFileTSV_g_114
+ set val(name3), file(hashed_germline_file) from g_70_germlineFastaFile0_g_114
+ set val(name4), file(germline_file) from g_8_germlineFastaFile1_g_114
+
+output:
+ set val(name1),file("*_genotype_report.tsv")  into g_114_outputFileTSV00
+ set val(name1),file("*_personal_reference.fasta")  into g_114_germlineFastaFile1_g_130
+
+script:
+call = params.genotype_piglet_v_call.call
+
+ref_a = ref.toString().split(' ')[0]
+
+"""
+#!/usr/bin/env Rscript 
+
+library(data.table)
+library(alakazam)
+library(ggplot2)
+library(dplyr)
+library(parallel)
+library(pbapply)
+library(RColorBrewer)
+library(ggforce)
+library(patchwork)
+library(progressr)
+library(Biostrings)
+library(stringr)
+library(piglet)
+library(tigger)
+library(data.table)
+library(dplyr)
+
+novel_germline <- tigger::readIgFasta("${hashed_germline_file}")
+germline <- tigger::readIgFasta("${germline_file}")
+novel_germline <- data.table(allele_hashed = names(novel_germline), sequence = novel_germline)
+germline <- data.table(allele = names(germline), sequence = germline)
+germ <- merge(germline, novel_germline, by = "sequence", all = TRUE)
+
+digger_germline <- readDNAStringSet("${ref}")
+digger_germline <- data.table(allele = names(digger_germline), sequence = as.character(digger_germline))
+
+germ <- merge(germ, digger_germline, by = "sequence", all = TRUE)
+
+hashed_allele <- germ[allele.x != allele_hashed,]
+hashed_allele <- setNames(hashed_allele[["allele.x"]], hashed_allele[["allele_hashed"]])
+
+# Map allele.x to allele.y, preserving alleles not in the mapping
+germ[["allele_a"]] <- ifelse(is.na(germ[["allele.y"]]), germ[["allele.x"]], germ[["allele.y"]])
+
+germ[["allele"]] <- germ[["allele_a"]]
+
+reference <- setNames(germ[["sequence"]], germ[["allele"]])
+
+    
+optimized_thresholds <- fread(file = "${optimized_thresholds}")   
+  
+split_rows <- function(data) {
+  # Identify rows with '/' in the allele column
+  split_data <- data[grepl("/", allele)]
+  
+  # Split those rows into separate rows for each allele
+  split_data <- split_data[, .(
+    allele = if (length(unlist(strsplit(allele, "/"))) > 0) unlist(strsplit(allele, "/")) else NA_character_,
+    threshold, threshold_min, threshold_max, mean_f1
+  ), by = seq_len(nrow(split_data))]
+  
+  # Remove the seq_len column created during split
+  split_data[, seq_len := NULL]
+  
+  # Combine the original rows without '/' with the newly split rows
+  combined_data <- rbind(data[!grepl("/", allele)], split_data, fill = TRUE)
+  
+  return(combined_data)
+}
+
+# Apply the function to the data
+optimized_thresholds <- split_rows(optimized_thresholds)
+
+print(optimized_thresholds)
+
+data <- data.table::fread("${airrFile}", data.table = F)
+setDT(data)
+data[, ${call}:= ifelse(${call} %in% names(hashed_allele), hashed_allele[${call}], ${call})]
+
+
+samp <- strsplit(basename("${airrFile}"),"[.]")[[1]][1]
+
+fasta_data <- readDNAStringSet("${ref}")
+alleles_from_fasta <- names(fasta_data)
+al <- data[, "${call}"]
+a <- unique(al[["${call}"]])
+a = unlist(lapply(a, function(x) strsplit(x, ",")[[1]]))
+a <-unique(a)
+alleles_from_fasta <- c(alleles_from_fasta,a)
+
+
+# Create a personal allele table
+personal_alleles <- data.table(sample = samp, allele = unique(alleles_from_fasta))
+personal_alleles[, gene := str_extract(allele, "^[^*]*")]
+
+personal_alleles[, threshold := sapply(allele, function(x) 
+optimized_thresholds[allele == strsplit(x,"_")[[1]][1], threshold][1]
+)]
+
+alleles_count <- data.table(sample = samp, "${call}" = data[["${call}"]])
+alleles_count[, multiple := 1/(stringi::stri_count_fixed("${call}", ",") + 1)]
+alleles_count <- alleles_count[, .(${call} = unlist(strsplit(${call}, ","))), by = .(sample, multiple)]
+alleles_count <- alleles_count[, .(count = sum(multiple)), by = "${call}"]
+setnames(alleles_count, "${call}", "allele")
+alleles_count[, gene := str_extract(allele, "^[^*]*")]
+alleles_count[, sample := samp]
+
+# Merge personal alleles and counts
+personal_alleles[, allele := as.character(allele)]
+alleles_count[, allele := as.character(allele)]
+alleles_count[, gene := as.character(gene)]
+
+genotypes <- merge(
+                personal_alleles[, .(sample, gene, allele, threshold)], 
+                alleles_count, 
+                by = c("sample", "gene", "allele"), 
+                all.x = TRUE
+              )
+                   
+genotypes[is.na(count), count := 0]
+
+print(genotypes)
+
+# Summarize count by sample and add to the final result table
+genotypes [, sum_count := sum(count), by = .(sample)]
+
+
+z_score <- function(Ni, N, Pi) {
+    (Ni - Pi * N) / sqrt(Pi * N * (1 - Pi))
+  }
+
+
+genotypes[, z_score := z_score(count, sum_count, threshold), by = .(sample, allele)]
+genotypes[, ref := reference[allele], by = "allele"]
+setDT(genotypes)
+genotypes[, in_genomic := allele %in% digger_germline[["allele"]]]
+
+write.table(genotypes, file = paste0("${call}","_genotype_report.tsv"), row.names = F, sep = "\t")
+
+
+genotypes <- genotypes[genotypes[["z_score"]]>=0,]
+
+germline_db_new <- DNAStringSet()
+
+# Loop through each row in genotypes and add to germline_db_new
+for (i in 1:nrow(genotypes)) {
+  allele <- genotypes[["allele"]][i]
+  seq <- genotypes[["ref"]][i]
+  
+  seq_set <- DNAStringSet(seq)
+  names(seq_set) <- allele  # Set the name for the sequence
+  
+  # Append each allele and its sequence to germline_db_new
+  germline_db_new <- append(germline_db_new, seq_set)
+}
+
+writeFasta(germline_db_new, file = paste0("${call}","_personal_reference.fasta"))
 """
 
 }
 
 
-process add_full_seq_col {
+process change_novel_to_not_1 {
+
+input:
+ set val(name), file(v_ref) from g_114_germlineFastaFile1_g_130
+
+output:
+ set val("v_ref"), file("new_V*")  into g_130_germlineFastaFile0_g_133, g_130_germlineFastaFile0_g131_22, g_130_germlineFastaFile0_g131_12, g_130_germlineFastaFile0_g131_43, g_130_germlineFastaFile0_g131_47
+ file "*changes.csv" optional true  into g_130_csvFile1_g_134
+
+
+script:
+
+readArray_v_ref = v_ref.toString().split(' ')[0]
+
+if(readArray_v_ref.endsWith("fasta")){
+
+"""
+#!/usr/bin/env python3 
+
+import pandas as pd
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
+from hashlib import sha256 
+
+
+def fasta_to_dataframe(file_path):
+    data = {'ID': [], 'Sequence': []}
+    with open(file_path, 'r') as file:
+        for record in SeqIO.parse(file, 'fasta'):
+            data['ID'].append(record.id)
+            data['Sequence'].append(str(record.seq))
+
+        df = pd.DataFrame(data)
+        return df
+
+
+file_path = '${readArray_v_ref}'  # Replace with the actual path
+df = fasta_to_dataframe(file_path)
+
+index_counter = 30  # Start index
+
+for index, row in df.iterrows():
+    if '_' in row['ID']:
+        print(row['ID'])
+        parts = row['ID'].split('*')
+        row['ID'] = f"{parts[0]}*{index_counter}"
+        # df.at[index, 'ID'] = row['ID']  # Update DataFrame with the new value
+        index_counter += 1
+        
+        
+        
+def dataframe_to_fasta(df, output_file, description_column='Description', default_description=''):
+    records = []
+
+    for index, row in df.iterrows():
+        sequence_record = SeqRecord(Seq(row['Sequence']), id=row['ID'])
+
+        # Use the description from the DataFrame if available, otherwise use the default
+        description = row.get(description_column, default_description)
+        sequence_record.description = description
+
+        records.append(sequence_record)
+
+    with open(output_file, 'w') as output_handle:
+        SeqIO.write(records, output_handle, 'fasta')
+
+def save_changes_to_csv(old_df, new_df, output_file):
+    changes = []
+    for index, (old_row, new_row) in enumerate(zip(old_df.itertuples(), new_df.itertuples()), 1):
+        if old_row.ID != new_row.ID:
+            changes.append({'Row': index, 'Old_ID': old_row.ID, 'New_ID': new_row.ID})
+    
+    changes_df = pd.DataFrame(changes)
+    if not changes_df.empty:
+        changes_df.to_csv(output_file, index=False)
+        
+output_file_path = 'new_V.fasta'
+
+dataframe_to_fasta(df, output_file_path)
+
+
+file_path = '${readArray_v_ref}'  # Replace with the actual path
+old_df = fasta_to_dataframe(file_path)
+
+output_csv_file = "v_changes.csv"
+save_changes_to_csv(old_df, df, output_csv_file)
+
+"""
+} else{
+	
+"""
+#!/usr/bin/env python3 
+	
+
+file_path = 'new_V.txt'
+
+with open(file_path, 'w'):
+    pass
+    
+"""    
+}    
+}
+
+
+process third_Alignment_V_MakeBlastDb {
+
+input:
+ set val(db_name), file(germlineFile) from g_130_germlineFastaFile0_g131_22
+
+output:
+ file "${db_name}"  into g131_22_germlineDb0_g131_9
+
+script:
+
+if(germlineFile.getName().endsWith("fasta")){
+	"""
+	sed -e '/^>/! s/[.]//g' ${germlineFile} > tmp_germline.fasta
+	mkdir -m777 ${db_name}
+	makeblastdb -parse_seqids -dbtype nucl -in tmp_germline.fasta -out ${db_name}/${db_name}
+	"""
+}else{
+	"""
+	echo something if off
+	"""
+}
+
+}
+
+
+process make_igblast_ndm_third_alignment {
+
+input:
+ set val(db_name), file(germlineFile) from g_130_germlineFastaFile0_g_133
+
+output:
+ file ndm_file  into g_133_outputFileTxt0_g131_9
+
+script:
+
+ndm_chain = params.make_igblast_ndm_third_alignment.ndm_chain
+
+chains = [IGH: 'VH', IGK: 'VK', IGL: 'VL', TRA: 'VA', TRB: 'VB', TRD: 'VD', TRG: 'VG']
+
+chain = chains[ndm_chain]
+
+ndm_file = db_name+".ndm"
+
+"""
+make_igblast_ndm ${germlineFile} ${chain} ${ndm_file}
+"""
+
+}
+
+
+process third_Alignment_IgBlastn {
+
+input:
+ set val(name),file(fastaFile) from g_80_germlineFastaFile0_g131_9
+ file db_v from g131_22_germlineDb0_g131_9
+ file db_d from g131_16_germlineDb0_g131_9
+ file db_j from g131_17_germlineDb0_g131_9
+ file auxiliary_data from g_132_outputFileTxt0_g131_9
+ file custom_internal_data from g_133_outputFileTxt0_g131_9
+
+output:
+ set val(name), file("${outfile}") optional true  into g131_9_igblastOut0_g131_12
+
+script:
+num_threads = params.third_Alignment_IgBlastn.num_threads
+ig_seqtype = params.third_Alignment_IgBlastn.ig_seqtype
+outfmt = params.third_Alignment_IgBlastn.outfmt
+num_alignments_V = params.third_Alignment_IgBlastn.num_alignments_V
+domain_system = params.third_Alignment_IgBlastn.domain_system
+
+randomString = org.apache.commons.lang.RandomStringUtils.random(9, true, true)
+outname = name + "_" + randomString
+outfile = (outfmt=="MakeDb") ? name+"_"+randomString+".out" : name+"_"+randomString+".tsv"
+outfmt = (outfmt=="MakeDb") ? "'7 std qseq sseq btop'" : "19"
+
+if(db_v.toString()!="" && db_d.toString()!="" && db_j.toString()!=""){
+	"""
+	export IGDATA=/usr/local/share/igblast
+	
+	igblastn -query ${fastaFile} \
+		-germline_db_V ${db_v}/${db_v} \
+		-germline_db_D ${db_d}/${db_d} \
+		-germline_db_J ${db_j}/${db_j} \
+		-num_alignments_V ${num_alignments_V} \
+		-domain_system imgt \
+		-auxiliary_data ${auxiliary_data} \
+		-custom_internal_data ${custom_internal_data} \
+		-outfmt ${outfmt} \
+		-num_threads ${num_threads} \
+		-out ${outfile}
+	"""
+}else{
+	"""
+	"""
+}
+
+}
+
+
+process third_Alignment_MakeDb {
+
+input:
+ set val(name),file(fastaFile) from g_80_germlineFastaFile0_g131_12
+ set val(name_igblast),file(igblastOut) from g131_9_igblastOut0_g131_12
+ set val(name1), file(v_germline_file) from g_130_germlineFastaFile0_g131_12
+ set val(name2), file(d_germline_file) from g_128_germlineFastaFile0_g131_12
+ set val(name3), file(j_germline_file) from g_129_germlineFastaFile0_g131_12
+
+output:
+ set val(name_igblast),file("*_db-pass.tsv") optional true  into g131_12_outputFileTSV0_g131_43, g131_12_outputFileTSV0_g131_47, g131_12_outputFileTSV0_g_134
+ set val("reference_set"), file("${reference_set}") optional true  into g131_12_germlineFastaFile11
+ set val(name_igblast),file("*_db-fail.tsv") optional true  into g131_12_outputFileTSV22
+
+script:
+
+failed = params.third_Alignment_MakeDb.failed
+format = params.third_Alignment_MakeDb.format
+regions = params.third_Alignment_MakeDb.regions
+extended = params.third_Alignment_MakeDb.extended
+asisid = params.third_Alignment_MakeDb.asisid
+asiscalls = params.third_Alignment_MakeDb.asiscalls
+inferjunction = params.third_Alignment_MakeDb.inferjunction
+partial = params.third_Alignment_MakeDb.partial
+name_alignment = params.third_Alignment_MakeDb.name_alignment
+
+failed = (failed=="true") ? "--failed" : ""
+format = (format=="changeo") ? "--format changeo" : ""
+extended = (extended=="true") ? "--extended" : ""
+regions = (regions=="rhesus-igl") ? "--regions rhesus-igl" : ""
+asisid = (asisid=="true") ? "--asis-id" : ""
+asiscalls = (asiscalls=="true") ? "--asis-calls" : ""
+inferjunction = (inferjunction=="true") ? "--infer-junction" : ""
+partial = (partial=="true") ? "--partial" : ""
+
+reference_set = "reference_set_makedb_"+name_alignment+".fasta"
+
+outname = name_igblast+'_'+name_alignment
+
+if(igblastOut.getName().endsWith(".out")){
+	"""
+	
+	cat ${v_germline_file} ${d_germline_file} ${j_germline_file} > ${reference_set}
+	
+	MakeDb.py igblast \
+		-s ${fastaFile} \
+		-i ${igblastOut} \
+		-r ${v_germline_file} ${d_germline_file} ${j_germline_file} \
+		--log MD_${name}.log \
+		--outname ${outname}\
+		${extended} \
+		${failed} \
+		${format} \
+		${regions} \
+		${asisid} \
+		${asiscalls} \
+		${inferjunction} \
+		${partial}
+	"""
+}else{
+	"""
+	
+	"""
+}
+
+}
+
+
+process third_Alignment_after_make_db_report {
+
+input:
+ set val(name), file(makeDb_pass) from g131_12_outputFileTSV0_g131_43
+ set val(name2), file(v_ref) from g_130_germlineFastaFile0_g131_43
+
+output:
+ file "*.rmd"  into g131_43_rMarkdown0_g131_47
+
+shell:
+
+readArray_makeDb_pass = makeDb_pass.toString().split(' ')[0]
+readArray_v_ref = v_ref.toString().split(' ')[0]
+
+'''
+#!/usr/bin/env perl
+
+
+my $script = <<'EOF';
+
+
+```{r echo=FALSE,message = FALSE}
+library(ggplot2)
+library(rlang)
+library(alakazam)
+library(dplyr)
+library(stringi)
+
+
+df <-read.delim("!{readArray_makeDb_pass}", sep="\t")
+
+df[["v_gene"]] <- getGene(df[["v_call"]], first = F, collapse = TRUE, strip_d = FALSE)
+
+df[["v_family"]] <- getFamily(df[["v_call"]], first = F, collapse = TRUE, strip_d = FALSE)
+
+df_filter <- df %>% filter(!grepl(",", v_call))
+
+
+df[,"start_v"] <- stringi::stri_locate_first(str = df[,"sequence_alignment"], regex="[ATCG]")[,1]
+df_filter[,"start_v"] <-  stringi::stri_locate_first(str = df_filter[,"sequence_alignment"], regex="[ATCG]")[,1]
+
+df[,"count_N"] <- stringi::stri_count_fixed(str = df[,"sequence_alignment"],"N")
+df_filter[,"count_N"] <- stringi::stri_count_fixed(str = df_filter[,"sequence_alignment"],"N")
+
+
+```
+
+
+
+### all reads
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=10}
+
+df[,"start_v"] <- stringi::stri_locate_first(str = df[,"sequence_alignment"], regex="[ATCG]")[,1]
+
+ggplot(df, aes(start_v)) + stat_ecdf() +
+  scale_x_continuous(breaks = seq(0, max(df[["start_v"]]), by = 10),
+                     labels = seq(0, max(df[["start_v"]]), by = 10)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1),
+					labels = seq(0, 1, by = 0.1)) +
+  theme(axis.text.x = element_text(size = 12),
+        axis.ticks.x = element_line(size = 2),
+        axis.ticks.y = element_line(size = 2))
+
+```
+
+
+### single assignment 
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=10}
+
+df_filter <- df %>% filter(!grepl(",", v_call))
+
+
+df_filter[,"start_v"] <-  stringi::stri_locate_first(str = df_filter[,"sequence_alignment"], regex="[ATCG]")[,1]
+
+ggplot(df_filter, aes(start_v)) + stat_ecdf()+
+  scale_x_continuous(breaks = seq(0, max(df_filter[["start_v"]]), by = 10),
+                     labels = seq(0, max(df_filter[["start_v"]]), by = 10)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1),
+				  	 labels = seq(0, 1, by = 0.1)) +
+  theme(axis.text.x = element_text(size = 12),
+        axis.ticks.x = element_line(size = 2))
+
+```
+
+### by gene 
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=70,fig.height=170}
+
+ggplot(df_filter, aes(start_v, colour = as.factor(v_gene))) +
+  stat_ecdf() +
+    scale_x_continuous(breaks = seq(0, max(df_filter[["start_v"]]), by = 10),
+                labels = seq(0, max(df_filter[["start_v"]]), by = 10)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1),
+				  	 labels = seq(0, 1, by = 0.1)) +
+  theme(axis.text.x = element_text(size = 50),
+        axis.ticks.x = element_line(size = 2),
+        axis.text.y = element_text(size = 50),
+        axis.ticks.y = element_line(size = 2),
+        strip.text = element_text(size = 50)) +
+    facet_wrap(~ v_family, scales = "free", ncol = 1) +
+    theme(legend.position = "bottom",
+            legend.key.size  = unit(2, "cm"),
+            legend.title=element_text(size=50),
+            legend.text =element_text(size=50))
+```
+
+## V identity
+
+### all reads
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=8}
+
+# Assuming df is your data frame
+ggplot(df, aes(x = v_identity)) +
+  geom_histogram(binwidth = 0.01, 
+                 fill = "blue", color = "black", alpha = 0.7) +
+  stat_density(geom = "line", color = "red", size = 1) +
+  labs(title = "Histogram with Density Line of v_identity", x = "v_identity", y = "Frequency")
+
+```
+
+### single assignment 
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=8}
+
+# Assuming df is your data frame
+ggplot(df_filter, aes(x = v_identity)) +
+  geom_histogram(binwidth = 0.01, 
+                 fill = "blue", color = "black", alpha = 0.7) +
+  stat_density(geom = "line", color = "red", size = 1) +
+  labs(title = "Histogram with Density Line of v_identity", x = "v_identity", y = "Frequency")
+
+```
+
+
+
+## N count
+
+
+### all reads
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=10}
+max_length <- max(nchar(df[,"sequence_alignment"]))
+sequences_padded <- stri_pad_right(df[,"sequence_alignment"], width = max_length, pad = "_")
+sequence_chars <- stri_split_regex(sequences_padded, "(?!^)(?=.{1})", simplify = TRUE)
+position_counts <- colSums(sequence_chars == "N")
+
+data_df <- data.frame(Position = 1:length(position_counts), Count = position_counts)
+
+ggplot(data_df, aes(x = Position, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "Position in Sequence",
+       y = "Number of Sequences with N",
+       title = "Histogram of Sequences with N at Each Position")
+
+```
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=10}
+cat("hist of N_count in each seq - without 0 N", "\n")
+x<-sum(df[,"count_N"]==0)
+cat("There is ",x, " with 0 N","\n")
+
+df_filtered <- df %>%
+filter(count_N > 0)
+
+# Create the bar plot
+ggplot(df_filtered, aes(x = as.factor(count_N))) +
+geom_bar(stat = "count") +
+labs(title = "Bar Plot for Each Value", x = "Value", y = "Count")
+
+```
+
+
+### single assignment 
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=10}
+max_length <- max(nchar(df_filter[,"sequence_alignment"]))
+sequences_padded <- stri_pad_right(df_filter[,"sequence_alignment"], width = max_length, pad = "_")
+sequence_chars <- stri_split_regex(sequences_padded, "(?!^)(?=.{1})", simplify = TRUE)
+position_counts <- colSums(sequence_chars == "N")
+
+data_df <- data.frame(Position = 1:length(position_counts), Count = position_counts)
+
+ggplot(data_df, aes(x = Position, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "Position in sequence alignment",
+       y = "Number of Sequences with N",
+       title = "N count at Each Position of sequence alignment")
+
+
+```
+
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=15,fig.height=10}
+cat("Histogaram of N count in each sequence alignment  - without 0 N", "\n")
+x<-sum(df_filter[,"count_N"]==0)
+cat("There is ",x, " with 0 N","\n")
+
+df_filtered <- df_filter %>%
+filter(count_N > 0)
+ggplot(df_filtered, aes(x = as.factor(count_N))) +
+geom_bar(stat = "count") +
+labs(title = "Bar Plot for Each Value", x = "Value", y = "Count")
+
+```
+
+
+## Functionality
+
+### all reads
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=10,fig.height=7}
+
+
+library(gridExtra)
+
+df_plot <- data.frame(table(df[,"productive"]))
+colnames(df_plot) <- c("productive", "count")
+df_plot[,"percentage"] <- df_plot[,"count"] / sum(df_plot[,"count"]) * 100
+
+# Create a ggplot pie chart
+p1 <- ggplot(df_plot, aes(x = "", y = percentage, fill = productive)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle("Productive") +
+  geom_text(aes(label = sprintf("%s\n%.1f%%", productive, percentage)),
+            position = position_stack(vjust = 0.5))
+
+df_plot <- data.frame(table(nchar(df[,"sequence"])%%3 == 0))
+colnames(df_plot) <- c("productive", "count")
+df_plot[,"percentage"] <- df_plot[,"count"] / sum(df_plot[,"count"]) * 100
+
+# Create a ggplot pie chart
+p2 <- ggplot(df_plot, aes(x = "", y = percentage, fill = productive)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle("sequence length divisible by 3") +
+  geom_text(aes(label = sprintf("%s\n%.1f%%", productive, percentage)),
+            position = position_stack(vjust = 0.5))
+
+df_plot <- data.frame(table(nchar(df[,"junction"])%%3 == 0))
+colnames(df_plot) <- c("productive", "count")
+df_plot[,"percentage"] <- df_plot[,"count"] / sum(df_plot[,"count"]) * 100
+
+# Create a ggplot pie chart
+p3 <- ggplot(df_plot, aes(x = "", y = percentage, fill = productive)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle("junction length divisible by 3") +
+  geom_text(aes(label = sprintf("%s\n%.1f%%", productive, percentage)),
+            position = position_stack(vjust = 0.5))
+
+
+grid.arrange(p1, p2,p3 ,ncol = 3)
+```
+
+### single assignment 
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=10,fig.height=7}
+
+library(gridExtra)
+
+df_plot <- data.frame(table(df_filter[,"productive"]))
+colnames(df_plot) <- c("productive", "count")
+df_plot[,"percentage"] <- df_plot[,"count"] / sum(df_plot[,"count"]) * 100
+
+# Create a ggplot pie chart
+p1 <- ggplot(df_plot, aes(x = "", y = percentage, fill = productive)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle("Productive") +
+  geom_text(aes(label = sprintf("%s\n%.1f%%", productive, percentage)),
+            position = position_stack(vjust = 0.5))
+
+df_plot <- data.frame(table(nchar(df_filter[,"sequence"])%%3 == 0))
+colnames(df_plot) <- c("productive", "count")
+df_plot[,"percentage"] <- df_plot[,"count"] / sum(df_plot[,"count"]) * 100
+
+# Create a ggplot pie chart
+p2 <- ggplot(df_plot, aes(x = "", y = percentage, fill = productive)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle("sequence length divisible by 3") +
+  geom_text(aes(label = sprintf("%s\n%.1f%%", productive, percentage)),
+            position = position_stack(vjust = 0.5))
+
+df_plot <- data.frame(table(nchar(df_filter[,"junction"])%%3 == 0))
+colnames(df_plot) <- c("productive", "count")
+df_plot[,"percentage"] <- df_plot[,"count"] / sum(df_plot[,"count"]) * 100
+
+# Create a ggplot pie chart
+p3 <- ggplot(df_plot, aes(x = "", y = percentage, fill = productive)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle("junction length divisible by 3") +
+  geom_text(aes(label = sprintf("%s\n%.1f%%", productive, percentage)),
+            position = position_stack(vjust = 0.5))
+
+
+grid.arrange(p1, p2,p3 ,ncol=3)
+```
+
+## Percentage of alleles for each gene
+
+```{r echo=FALSE,message = FALSE,warnings =FALSE,fig.width=35,fig.height=150}
+df_filter %>%
+  filter(!grepl(",", v_call)) %>%
+  group_by(v_gene) %>%
+  mutate(n_read = n()) %>%
+  group_by(v_gene, v_call) %>%
+  summarise(n_read=n_read,n_calls = n()) %>%
+  distinct(v_gene, v_call, .keep_all = TRUE) %>%
+  summarise(n_read=n_read,n_calls = n_calls, p_calls = n_calls / n_read * 100) %>%
+  arrange(v_gene, desc(p_calls)) %>%
+  ggplot(aes(x = reorder(v_call, p_calls), y = p_calls)) + # Modified aes() function
+  geom_col() + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0.5,size = 15),
+        axis.ticks.x = element_line(size = 2),
+        axis.text.y = element_text(size = 20),
+        axis.ticks.y = element_line(size = 2),
+        strip.text = element_text(size = 20))+
+  facet_wrap(.~v_gene, ncol = 4, scales = "free")
+  
+```
+
+EOF
+	
+open OUT, ">after_make_db_report_!{name}.rmd";
+print OUT $script;
+close OUT;
+
+'''
+
+}
+
+
+process third_Alignment_render_after_make_db_report {
+
+input:
+ file rmk from g131_43_rMarkdown0_g131_47
+ set val(name4), file(v_ref) from g_130_germlineFastaFile0_g131_47
+ set val(name), file(makeDb_pass) from g131_12_outputFileTSV0_g131_47
+
+output:
+ file "*.html"  into g131_47_outputFileHTML00
+ file "*csv" optional true  into g131_47_csvFile11
+
+"""
+
+#!/usr/bin/env Rscript 
+
+rmarkdown::render("${rmk}", clean=TRUE, output_format="html_document", output_dir=".")
+
+"""
+}
+
+g_128_outputFileCSV1_g_134= g_128_outputFileCSV1_g_134.ifEmpty([""]) 
+g_129_outputFileCSV1_g_134= g_129_outputFileCSV1_g_134.ifEmpty([""]) 
+
+
+process changes_names_for_piglet_1 {
+
+input:
+ set val(name),file(airrFile) from g131_12_outputFileTSV0_g_134
+ file v_change from g_130_csvFile1_g_134
+ file d_change from g_128_outputFileCSV1_g_134
+ file j_change from g_129_outputFileCSV1_g_134
+
+output:
+ set val(name),file("*_change_name.tsv")  into g_134_outputFileTSV0_g_136
+ set val(name),file("*_to_piglet.tsv")  into g_134_outputFileTSV11
+
+script:
+chain = params.changes_names_for_piglet_1.chain
+
+outname = airrFile.toString() - '.tsv' +"_change_name"
+outname_selected = airrFile.toString() - '.tsv' +"_to_piglet"
+
+"""
+#!/usr/bin/env Rscript
+
+library(data.table)
+library(alakazam)
+library(ggplot2)
+library(dplyr)
+library(parallel)
+library(pbapply)
+library(stringr)
+
+sample <- strsplit(basename("${airrFile}"), "[.]")[[1]][1]
+
+select_columns <- if ("${chain}" == "IGH") c("sequence_id", "v_call", "d_call", "j_call") else c("sequence_id", "v_call", "j_call")
+data <- data.table::fread("${airrFile}", data.table = F)
+
+# Load V change file
+change_file <- "v_changes.csv"
+changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
+
+# Convert to data.table
+setDT(data)
+
+# Add new columns to data
+data[, `:=`(
+  v_call_changed = v_call,
+  d_call_changed = d_call,
+  j_call_changed = j_call
+)]
+
+if (file.exists(change_file)) {
+	# Apply changes to v_call
+	for (change in 1:nrow(changes)) {
+	  old_id <- changes[change, "old_id"]
+	  new_id <- changes[change, "new_id"]
+	  data[str_detect(v_call, fixed(new_id)), v_call_changed := old_id]
+	}
+	data[["v_call"]] <- data[["v_call_changed"]]
+} else {
+  message("Change file does not exist. No changes applied to j_call.")
+}
+
+# Apply changes to d_call if chain is IGH
+if ("${chain}" == "IGH") {
+  change_file <- "d_changes.csv"
+  if (file.exists(change_file)) {
+	  changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
+	  for (change in 1:nrow(changes)) {
+	    old_id <- changes[change, "old_id"]
+	    new_id <- changes[change, "new_id"]
+	    data[, d_call_changed := str_replace_all(d_call_changed, fixed(new_id), old_id)]
+	  }
+	  data[["d_call"]] <- data[["d_call_changed"]]
+	} else {
+	  message("Change file does not exist. No changes applied to d_call.")
+	}
+}
+
+change_file <- "j_changes.csv"
+# Apply changes to j_call
+if (file.exists(change_file)) {
+  changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
+  for (change in 1:nrow(changes)) {
+    old_id <- changes[change, "old_id"]
+    new_id <- changes[change, "new_id"]
+    data[, j_call_changed := str_replace_all(j_call_changed, fixed(new_id), old_id)]
+  }
+  data[["j_call"]] <- data[["j_call_changed"]]
+} else {
+  message("Change file does not exist. No changes applied to j_call.")
+}
+
+# Write the full output file
+write.table(data, sep = "\t", file = paste0("${outname}", ".tsv"), row.names = FALSE)
+
+# Write the selected columns output
+select_columns <- if ("${chain}" == "IGH") c("sequence_id", "v_call", "d_call", "j_call") else c("sequence_id", "v_call", "j_call")
+setDT(data)
+data_selected <- data[, .SD, .SDcols = select_columns]
+write.table(data_selected, sep = "\t", file = paste0("${outname_selected}", ".tsv"), row.names = FALSE)
+"""
+
+}
+
+
+process add_full_seq_col_1 {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_with_full_seq.tsv$/) "rearrangements/$filename"}
 input:
- set val(name), file(airrSeq) from g_94_fastaFile_g_125
- set val(name1),file(airrFile) from g_113_outputFileTSV0_g_125
+ set val(name), file(airrSeq) from g_94_fastaFile_g_136
+ set val(name1),file(airrFile) from g_134_outputFileTSV0_g_136
 
 output:
- set val(name1),file("*_with_full_seq.tsv")  into g_125_outputFileTSV00
+ set val(name1),file("*_with_full_seq.tsv")  into g_136_outputFileTSV00
 
 script:
 
@@ -3417,6 +4360,241 @@ merged_data <- tsv_data %>%
 write.table(merged_data, sep = "\t", file = paste0("${outname}", ".tsv"), row.names = FALSE)
 
 
+"""
+
+}
+
+
+process First_Alignment_alignment_report_table {
+
+input:
+ set val(name),file(collapse_pass) from g0_19_outputFileTSV0_g0_52
+ set val(name1),file(collapse_fail) from g0_19_outputFileTSV1_g0_52
+ set val(name2),file(makedb_fail) from g0_12_outputFileTSV2_g0_52
+ set val(name3),file(makedb_pass) from g0_12_outputFileTSV0_g0_52
+
+output:
+ file "*.tsv.gz"  into g0_52_outputFileTSV00
+
+script:
+name_alignment = params.First_Alignment_alignment_report_table.name_alignment
+
+outname = name+'_'+name_alignment
+
+
+collapse_pass = collapse_pass.toString().split(' ')[0]
+collapse_fail = collapse_fail.toString().split(' ')[0]
+makedb_fail = makedb_fail.toString().split(' ')[0]
+makedb_pass = makedb_pass.toString().split(' ')[0]
+
+"""
+#!/usr/bin/env Rscript
+
+## functions
+
+write_file <- function(x, file){
+	data.table::fwrite(
+	x = x,
+	file = file,
+	sep = "\t",
+	compress = "auto"
+	)	
+}
+
+##
+
+sample_name <- "${name}"
+db_collapse_pass <- data.table::fread("${collapse_pass}")
+db_collapse_fail <- data.table::fread("${collapse_fail}")
+db_makedb_fail <- data.table::fread("${makedb_fail}")
+db_makedb_pass <- data.table::fread("${makedb_pass}")
+
+## add status columns
+
+db_collapse_pass[['collapse_pass']] <- TRUE
+db_collapse_pass[['igblast_pass']] <- TRUE
+
+db_collapse_fail[['collapse_pass']] <- FALSE
+db_collapse_fail[['igblast_pass']] <- TRUE
+
+db_makedb_fail[['collapse_pass']] <- FALSE
+db_makedb_fail[['igblast_pass']] <- FALSE
+
+db_makedb_pass[['collapse_pass']] <- FALSE
+db_makedb_pass[['igblast_pass']] <- TRUE
+
+
+######### absolute numbers #########
+
+igblast_pass <- nrow(db_makedb_pass)
+igblast_pass_productive <- sum(db_makedb_pass[['productive']]==TRUE)
+igblast_fail <- nrow(db_makedb_fail)
+
+collapse_pass <- nrow(db_collapse_pass)
+collase_fail <- nrow(db_collapse_fail)
+
+db_collapse_pass[['v_gene']] <- alakazam::getGene(db_collapse_pass[['v_call']], first=FALSE)
+
+ma_collapse_pass <- sum(grepl(",", db_collapse_pass[['v_gene']]))
+
+tab <- data.frame(sample = sample_name, 
+				category = c(
+					'Igblast passed reads',
+					'Igblast failed reads',
+					'Igblast passed productive reads',
+					'Collapsed passed reads',
+					'Collapsed failed reads',
+					'Collapsed passed productive reads',
+					'Multiple ASC assignments'
+					),
+				values = c(
+					igblast_pass,
+					igblast_fail,
+					igblast_pass_productive,
+					collapse_pass,
+					collase_fail,
+					collapse_pass,
+					ma_collapse_pass
+					)
+)
+
+write_file(
+	x = tab,
+	file = paste0("${outname}","_absolute_numbers.tsv.gz")
+)
+
+
+remove(igblast_fail)
+
+####################################
+
+############# V start #############
+
+v_start_align_makedb <- as.data.frame(stringi::stri_locate_first(db_makedb_pass[['sequence_alignment']], regex = "[ATCG]"))
+v_start_align_makedb[['Stage']] <- 'IgBlast'
+v_start_align_makedb[['sample']] <- sample_name
+
+v_start_align_collapse <- as.data.frame(stringi::stri_locate_first(db_collapse_pass[['sequence_alignment']], regex = "[ATCG]"))
+v_start_align_collapse[['Stage']] <- 'Collapse'
+v_start_align_collapse[['sample']] <- sample_name
+
+v_start_align <- rbind(v_start_align_makedb, v_start_align_collapse)
+
+write_file(
+	x = v_start_align,
+	file = paste0("${outname}","_v_start.tsv.gz")
+)
+
+#######################################
+
+############# UTR5 length #############
+
+utr5_size_seq_makedb <- data.frame(
+						utr5_length = db_makedb_pass[['v_sequence_start']]-1, 
+						Stage = 'IgBlast', 
+						sample = sample_name, stringsAsFactors = FALSE)
+
+utr5_size_seq_collapse <- data.frame(
+						utr5_length = db_collapse_pass[['v_sequence_start']]-1, 
+						Stage = 'Collapse', 
+						sample = sample_name, stringsAsFactors = FALSE)
+
+utr5_size_seq <- rbind(utr5_size_seq_makedb, utr5_size_seq_collapse)
+
+write_file(
+	x = utr5_size_seq,
+	file = paste0("${outname}","_utr5_length.tsv.gz")
+)
+
+#######################################
+
+########### Collapse thresh #############
+
+# productive based on duplicate/consensus threshold
+
+col_thresh <- if('consensus_count' %in% names(db_collapse_pass)) 'consensus_count' else 'duplicate_count'
+
+thresh_val <- min(db_collapse_pass[[col_thresh]])
+
+thresh_seq <- 0:100
+
+thresh_values <- data.table::rbindlist(lapply(thresh_seq, function(t){
+	collapse_pass_prod_true_above_thresh <- sum(db_collapse_pass[[col_thresh]]>=t)
+	collapse_fail_prod_all_above_thresh <- sum(db_collapse_fail[[col_thresh]]>=t)
+	
+	data.frame(
+	Stage = 'Collapse',
+	sample = sample_name,
+	thresh_col = col_thresh,
+	thresh_val = t, 
+	above_threshold = collapse_fail_prod_all_above_thresh, stringsAsFactors = FALSE)
+}))
+
+write_file(
+	x = thresh_values,
+	file = paste0("${outname}","_collapse_thresh.tsv.gz")
+)
+
+#######################################
+
+
+"""
+
+
+}
+
+g0_12_outputFileTSV2_g0_27= g0_12_outputFileTSV2_g0_27.ifEmpty([""]) 
+g0_19_outputFileTSV1_g0_27= g0_19_outputFileTSV1_g0_27.ifEmpty([""]) 
+
+
+process First_Alignment_count_aligmant_pass_fail {
+
+input:
+ set val(name), file(makeDb_pass) from g0_12_outputFileTSV0_g0_27
+ set val(name1), file(makeDb_fail) from g0_12_outputFileTSV2_g0_27
+ set val(name2), file(collapse_pass) from g0_19_outputFileTSV0_g0_27
+ set val(name3), file(collapse_fail) from g0_19_outputFileTSV1_g0_27
+
+output:
+ set val(name), file("*txt")  into g0_27_logFile00
+
+script:
+
+readArray_makeDb_pass = makeDb_pass.toString().split(' ')
+readArray_makeDb_fail = makeDb_fail.toString().split(' ')
+readArray_collapse_pass = collapse_pass.toString().split(' ')
+readArray_collapse_fail = collapse_fail.toString().split(' ')
+
+"""
+#!/usr/bin/env Rscript 
+
+makeDb_pass<-read.csv("${readArray_makeDb_pass[0]}", sep="\t")
+makeDb_fail<- tryCatch(read.csv("${readArray_makeDb_fail[0]}", sep="\t"), error=function(e) NULL)
+nrow_mdb_fail <- if(!is.null(makeDb_fail)) nrow(makeDb_fail) else 0
+
+collapse_pass<-read.csv("${readArray_collapse_pass[0]}", sep="\t")
+collapse_fail<- tryCatch(read.csv("${readArray_collapse_fail[0]}", sep="\t"), error=function(e) NULL)
+nrow_collapse_fail <- if(!is.null(collapse_fail)) nrow(collapse_fail) else 0
+
+x<-"${readArray_makeDb_pass[0]}"
+
+lines <- c(
+    paste("START>", "After IgBLAST+makedb"),
+    paste("PASS>", nrow(makeDb_pass)),
+    paste("FAIL>", nrow_mdb_fail),
+    paste("END>", "After IgBLAST+makedb"),
+    "",
+    paste("START>", "after DUPCOUNT filter"),
+    paste("PASS>", nrow(collapse_pass)),
+    paste("FAIL>", nrow_collapse_fail),
+    paste("END>", "after DUPCOUNT filter"),
+    ""
+  )
+
+
+file_path <- paste(chartr(".", "1", x),"output.txt", sep="-")
+
+cat(lines, sep = "\n", file = file_path, append = TRUE)
 """
 
 }
