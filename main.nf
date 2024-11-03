@@ -2761,8 +2761,12 @@ fasta_df <- data.frame(
   full_seq = as.character(fasta_seqs)
 )
 
+fasta_df[["sequence_id"]] <- sapply(strsplit(fasta_df[["sequence_id"]], "|", fixed = TRUE), `[`, 1)
+
 # Read the TSV file
 tsv_data <- data.table::fread("${airrFile}", data.table = F)
+
+
 
 # Merge the TSV file with FASTA data on sequence_id
 merged_data <- tsv_data %>%
@@ -4349,8 +4353,12 @@ fasta_df <- data.frame(
   full_seq = as.character(fasta_seqs)
 )
 
+fasta_df[["sequence_id"]] <- sapply(strsplit(fasta_df[["sequence_id"]], "|", fixed = TRUE), `[`, 1)
+
 # Read the TSV file
 tsv_data <- data.table::fread("${airrFile}", data.table = F)
+
+
 
 # Merge the TSV file with FASTA data on sequence_id
 merged_data <- tsv_data %>%
