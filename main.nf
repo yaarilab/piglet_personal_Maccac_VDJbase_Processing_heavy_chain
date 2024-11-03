@@ -47,6 +47,17 @@ params.Undocumented_Alleles.j_max = 0.15
 params.Undocumented_Alleles.min_frac = 0.75
 
 
+params.Undocumented_Alleles_J.chain = "IGH"
+params.Undocumented_Alleles_J.num_threads = 4
+params.Undocumented_Alleles_J.germline_min = 200
+params.Undocumented_Alleles_J.min_seqs = 50
+params.Undocumented_Alleles_J.auto_mutrange = "true"
+params.Undocumented_Alleles_J.mut_range = "1:10"
+params.Undocumented_Alleles_J.pos_range = "1:46"
+params.Undocumented_Alleles_J.y_intercept = 0.125
+params.Undocumented_Alleles_J.alpha = 0.05
+params.Undocumented_Alleles_J.j_max = 0.15
+params.Undocumented_Alleles_J.min_frac = 0.75
 
 // part 3
 
@@ -2447,7 +2458,7 @@ input:
 output:
  set val(outname),file("*_clone_rep-passed.tsv*")  into g14_9_outputFileTSV0_g_83
  file "*.pdf" optional true  into g14_9_outputFilePdf11
- set val(name), file("*txt")  into g14_9_logFile22
+ set val(name), file("*txt")  into g14_9_logFile2_g_138
  file "*png"  into g14_9_outputFile33
 
 script:
@@ -4563,7 +4574,7 @@ input:
  set val(name3), file(collapse_fail) from g0_19_outputFileTSV1_g0_27
 
 output:
- set val(name), file("*txt")  into g0_27_logFile00
+ set val(name), file("*txt")  into g0_27_logFile0_g_138
 
 script:
 
@@ -4604,6 +4615,75 @@ file_path <- paste(chartr(".", "1", x),"output.txt", sep="-")
 cat(lines, sep = "\n", file = file_path, append = TRUE)
 """
 
+}
+
+
+process maccac_pipeline_statistics {
+
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*csv$/) "pipeline_statistics/$filename"}
+input:
+ set val(name), file(first_igblast) from g0_27_logFile0_g_138
+ set val(name2), file(clone) from g14_9_logFile2_g_138
+
+output:
+ file "*csv"  into g_138_outputFileCSV00
+
+
+script:
+
+readArray_first_igblast = first_igblast.toString().split(' ')
+readArray_clone = clone.toString().split(' ')
+
+
+
+"""
+#!/usr/bin/env Rscript 
+
+x1<-"${readArray_first_igblast[0]}"
+x2<-"${readArray_clone[0]}"
+
+file_names <- c(x1, x2)
+output_file <- "output.txt"
+content <- sapply(file_names, function(file) {
+  readLines(file)
+}, simplify = "c")
+writeLines(unlist(content), con = output_file)
+
+library(prestor)
+library(dplyr)
+
+console_log <- loadConsoleLog("output.txt")
+
+log_df <- console_log
+pass=c("PASS", "UNIQUE")
+fail=c("FAIL", "DUPLICATE", "UNDETERMINED")
+
+# Get passed entries
+pass_df <- log_df %>%
+    filter(!!rlang::sym("field") %in% pass) %>%
+    mutate_at("value", as.numeric) %>%
+    group_by(!!!rlang::syms(c("step", "task"))) %>%
+    dplyr::summarize(pass=sum(!!rlang::sym("value")))
+
+# Get failed entries
+fail_df <- log_df %>%
+    filter(!!rlang::sym("field") %in% fail) %>%
+    mutate_at("value", as.numeric) %>%
+    group_by(!!!rlang::syms(c("step", "task"))) %>%
+    summarize(fail=sum(!!rlang::sym("value")))
+
+# Merge passed and failed counts
+count_df <- inner_join(pass_df, fail_df, by=c("step", "task")) %>%
+    rowwise() %>%
+    dplyr::mutate(total=!!rlang::sym("pass") + !!rlang::sym("fail"),
+                  fraction=!!rlang::sym("pass") / !!rlang::sym("total"))
+
+
+df<-count_df[,c("task", "pass", "fail")]
+
+write.csv(df,"pipeline_statistics.csv") 
+
+"""
 }
 
 
