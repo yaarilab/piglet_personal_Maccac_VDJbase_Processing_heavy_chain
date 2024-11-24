@@ -23,7 +23,7 @@ The pipeline can be devided into seven main componenet:
 
 **5. Genotype inference**
 
-> In this section, genotypes are inferred for each of the IG calls: V, D, and J using TIgGER Bayesian inferernce tool, and a personal reference set is created.
+> In this section, genotypes are inferred for each of the IG calls: V, D, and J using Piglet allele based genotype inferernce tool, and a personal reference set is created.
 
 **6. Third repertoire alignment and annotation with the personal reference set.**
 

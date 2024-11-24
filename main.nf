@@ -777,6 +777,7 @@ if(igblastOut.getName().endsWith(".out")){
 
 process First_Alignment_Collapse_AIRRseq {
 
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /${outfile}+passed.tsv$/) "rearrangements/$filename"}
 input:
  set val(name),file(airrFile) from g0_12_outputFileTSV0_g0_19
 
@@ -2645,8 +2646,8 @@ input:
  file j_change from g_90_outputFileCSV1_g_113
 
 output:
- set val(name),file("*_change_name.tsv")  into g_113_outputFileTSV0_g_125
- set val(name),file("*_to_piglet.tsv")  into g_113_outputFileTSV1_g_114, g_113_outputFileTSV1_g_115, g_113_outputFileTSV1_g_124
+ set val(name),file("*_change_name.tsv")  into g_113_outputFileTSV0_g_125, g_113_outputFileTSV0_g_124
+ set val(name),file("*_to_piglet.tsv")  into g_113_outputFileTSV1_g_114, g_113_outputFileTSV1_g_115
 
 script:
 chain = params.changes_names_for_piglet.chain
@@ -2796,7 +2797,7 @@ process genotype_piglet_d {
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_genotype_report.tsv$/) "genotype_report/$filename"}
 input:
  set val(name), file(ref) from g_3_germlineFastaFile_g_124
- set val(name1),file(airrFile) from g_113_outputFileTSV1_g_124
+ set val(name1),file(airrFile) from g_113_outputFileTSV0_g_124
  set val(name2),file(optimized_thresholds) from g_117_outputFileTSV_g_124
 
 output:
@@ -2868,6 +2869,47 @@ data <- data.table::fread("${airrFile}", data.table = F)
 setDT(data)
 data <- data[!grepl(",", get("${call}"))]
 
+calculate_d_mutations <- function(sequence_alignment, germline_alignment, 
+                                  d_sequence_start, d_sequence_end, 
+                                  d_germline_start, d_germline_end) {
+  # Check if the provided positions are valid
+  if (is.na(d_sequence_start) || is.na(d_sequence_end) || 
+      is.na(d_germline_start) || is.na(d_germline_end) ||
+      d_sequence_start < 1 || d_sequence_end > nchar(sequence_alignment) ||
+      d_germline_start < 1 || d_germline_end > nchar(germline_alignment)) {
+    return(NA) # Return NA if positions are out of bounds or missing
+  }
+  
+  # Slice out the D region from the sequences
+  seq_d_region <- substr(sequence_alignment, d_sequence_start, d_sequence_end)
+  germ_d_region <- substr(germline_alignment, d_germline_start, d_germline_end)
+  
+  # Split sequences into individual nucleotides and compare
+  seq_d_nucleotides <- unlist(strsplit(seq_d_region, ""))
+  germ_d_nucleotides <- unlist(strsplit(germ_d_region, ""))
+  
+  # Count mismatches (mutations)
+  mutations <- sum(seq_d_nucleotides != germ_d_nucleotides)
+  return(mutations)
+}
+
+
+data <- data[!is.na(data[["d_call"]]), ]
+
+data[["specific_seq"]] <- reference[data[["d_call"]]]
+
+# Use mapply to calculate mutations
+data[["d_mutations"]] <- mapply(calculate_d_mutations, 
+                           sequence_alignment = data[["sequence"]],
+                           germline_alignment = data[["specific_seq"]],
+                           d_sequence_start = data[["d_sequence_start"]],
+                           d_sequence_end = data[["d_sequence_end"]],
+                           d_germline_start = data[["d_germline_start"]],
+                           d_germline_end = data[["d_germline_end"]])
+
+data <- data[!is.na(data[["d_mutations"]]), ]
+
+data <- data[data[["d_mutations"]] == 0,]
 
 samp <- strsplit(basename("${airrFile}"),"[.]")[[1]][1]
 
