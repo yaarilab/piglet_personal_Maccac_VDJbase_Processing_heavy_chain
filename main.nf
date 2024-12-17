@@ -1155,19 +1155,19 @@ if (class(novel) != 'try-error') {
 	print(novel)
 	
 	if (nrow(novel) != 0) {
-		SNP_XXXX <- unlist(sapply(1:nrow(novel), function(i) {
-		  subs <- strsplit(novel[['nt_substitutions']][i], ',')[[1]]
-		  RR <-
-		    unlist(sapply(subs,
-		           Repeated_Read,
-		           seq = novel[['germline_imgt']][i],
-		           simplify = F))
-		  RR <- RR[!is.na(RR)]
+		# SNP_XXXX <- unlist(sapply(1:nrow(novel), function(i) {
+		#   subs <- strsplit(novel[['nt_substitutions']][i], ',')[[1]]
+		#   RR <-
+		#     unlist(sapply(subs,
+		#           Repeated_Read,
+		#           seq = novel[['germline_imgt']][i],
+		#           simplify = F))
+		#   RR <- RR[!is.na(RR)]
 		  
-		  length(RR) != 0
-		}))
+		#   length(RR) != 0
+		# }))
 		
-		novel <- novel[!SNP_XXXX, ]
+		# novel <- novel[!SNP_XXXX, ]
 		
 		# remove duplicated novel alleles
 		bool <- !duplicated(novel[['polymorphism_call']])
