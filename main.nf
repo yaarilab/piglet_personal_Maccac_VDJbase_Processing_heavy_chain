@@ -3054,10 +3054,6 @@ sample <- strsplit(basename("${airrFile}"), "[.]")[[1]][1]
 select_columns <- if ("${chain}" == "IGH") c("sequence_id", "v_call", "d_call", "j_call") else c("sequence_id", "v_call", "j_call")
 data <- data.table::fread("${airrFile}", data.table = F)
 
-# Load V change file
-change_file <- "v_changes.csv"
-changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
-
 # Convert to data.table
 setDT(data)
 
@@ -3068,7 +3064,10 @@ data[, `:=`(
   j_call_changed = j_call
 )]
 
+# Load V change file
+change_file <- "v_changes.csv"
 if (file.exists(change_file)) {
+	changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
 	# Apply changes to v_call
 	for (change in 1:nrow(changes)) {
 	  old_id <- changes[change, "old_id"]
@@ -4699,10 +4698,6 @@ sample <- strsplit(basename("${airrFile}"), "[.]")[[1]][1]
 select_columns <- if ("${chain}" == "IGH") c("sequence_id", "v_call", "d_call", "j_call") else c("sequence_id", "v_call", "j_call")
 data <- data.table::fread("${airrFile}", data.table = F)
 
-# Load V change file
-change_file <- "v_changes.csv"
-changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
-
 # Convert to data.table
 setDT(data)
 
@@ -4713,7 +4708,10 @@ data[, `:=`(
   j_call_changed = j_call
 )]
 
+# Load V change file
+change_file <- "v_changes.csv"
 if (file.exists(change_file)) {
+	changes <- read.csv(change_file, header = FALSE, col.names = c("row", "old_id", "new_id"))
 	# Apply changes to v_call
 	for (change in 1:nrow(changes)) {
 	  old_id <- changes[change, "old_id"]
