@@ -4977,7 +4977,7 @@ output:
 script:
 
 
-reference_set = "reference_set_makedb_"+name_alignment+".fasta"
+reference_set = "reference_set_makedb.fasta"
 
 """
 	cat ${v_germline_file} ${d_germline_file} ${j_germline_file} > ${reference_set}
