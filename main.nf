@@ -3132,7 +3132,7 @@ input:
 
 output:
  set val(name1),file("*_genotype_report.tsv")  into g_124_outputFileTSV0_g_141
- set val(name1),file("*_personal_reference.fasta")  into g_124_germlineFastaFile1_g_128
+ set val(name1),file("*_personal_reference.fasta")  into g_124_germlineFastaFile1_g_128, g_124_germlineFastaFile1_g_148
 
 script:
 
@@ -3489,7 +3489,7 @@ input:
 
 output:
  set val(name1),file("*_genotype_report.tsv")  into g_115_outputFileTSV0_g_141
- set val(name1),file("*_personal_reference.fasta")  into g_115_germlineFastaFile1_g_129
+ set val(name1),file("*_personal_reference.fasta")  into g_115_germlineFastaFile1_g_129, g_115_germlineFastaFile1_g_148
 
 script:
 call = params.genotype_piglet_j_call.call
@@ -3838,7 +3838,7 @@ input:
 
 output:
  set val(name1),file("*_genotype_report.tsv")  into g_114_outputFileTSV0_g_141
- set val(name1),file("*_personal_reference.fasta")  into g_114_germlineFastaFile1_g_130, g_114_germlineFastaFile1_g_144
+ set val(name1),file("*_personal_reference.fasta")  into g_114_germlineFastaFile1_g_130, g_114_germlineFastaFile1_g_144, g_114_germlineFastaFile1_g_148
 
 script:
 call = params.genotype_piglet_v_call.call
@@ -4236,7 +4236,7 @@ input:
 
 output:
  set val(name_igblast),file("*_db-pass.tsv") optional true  into g131_12_outputFileTSV0_g131_43, g131_12_outputFileTSV0_g131_47, g131_12_outputFileTSV0_g_134
- set val("reference_set"), file("${reference_set}") optional true  into g131_12_germlineFastaFile1_g_144
+ set val("reference_set"), file("${reference_set}") optional true  into g131_12_germlineFastaFile11
  set val(name_igblast),file("*_db-fail.tsv") optional true  into g131_12_outputFileTSV22
 
 script:
@@ -4964,13 +4964,36 @@ write.table(merged_data, sep = "\t", file = paste0("${outname}", ".tsv"), row.na
 }
 
 
+process creat_ref_set {
+
+input:
+ set val(name1), file(v_germline_file) from g_114_germlineFastaFile1_g_148
+ set val(name2), file(d_germline_file) from g_124_germlineFastaFile1_g_148
+ set val(name3), file(j_germline_file) from g_115_germlineFastaFile1_g_148
+
+output:
+ set val("reference_set"), file("${reference_set}")  into g_148_germlineFastaFile0_g_144
+
+script:
+
+
+reference_set = "reference_set_makedb_"+name_alignment+".fasta"
+
+"""
+	cat ${v_germline_file} ${d_germline_file} ${j_germline_file} > ${reference_set}
+
+"""
+
+}
+
+
 process ogrdbstats_report {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*pdf$/) "ogrdbstats_third_alignment/$filename"}
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*csv$/) "ogrdbstats_third_alignment/$filename"}
 input:
  set val(name),file(airrFile) from g_134_outputFileTSV0_g_144
- set val(name1), file(germline_file) from g131_12_germlineFastaFile1_g_144
+ set val(name1), file(germline_file) from g_148_germlineFastaFile0_g_144
  set val(name2), file(v_germline_file) from g_114_germlineFastaFile1_g_144
 
 output:
