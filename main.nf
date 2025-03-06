@@ -3838,7 +3838,7 @@ input:
 
 output:
  set val(name1),file("*_genotype_report.tsv")  into g_114_outputFileTSV0_g_141
- set val(name1),file("*_personal_reference.fasta")  into g_114_germlineFastaFile1_g_130, g_114_germlineFastaFile1_g_144, g_114_germlineFastaFile1_g_148
+ set val(name1),file("*_personal_reference.fasta")  into g_114_germlineFastaFile1_g_144, g_114_germlineFastaFile1_g_148, g_114_germlineFastaFile1_g_130
 
 script:
 call = params.genotype_piglet_v_call.call
@@ -4061,7 +4061,7 @@ def fasta_to_dataframe(file_path):
 file_path = '${readArray_v_ref}'  # Replace with the actual path
 df = fasta_to_dataframe(file_path)
 
-index_counter = 30  # Start index
+index_counter = 40  # Start index
 
 for index, row in df.iterrows():
     if '_' in row['ID']:
